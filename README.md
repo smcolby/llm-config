@@ -23,8 +23,8 @@ edits here take effect immediately.
 
 ## Machine-specific values to update after bootstrap
 
-- `agent/settings.json` → `prompts`: absolute paths to local prompt files
-- `agent/models.json` → `baseUrl`: Ollama host address (currently `http://loki.local:11434`)
+- `agent/settings.json` → `prompts`: absolute local paths to prompt files — update to match the new machine's directory layout
+- `agent/models.json` → `baseUrl`: Ollama host address — update from `http://loki.local:11434` to the new machine's local address
 
 ## Skills
 
