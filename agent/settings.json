@@ -1,0 +1,17 @@
+{
+  "lastChangelogVersion": "0.75.5",
+  "defaultProvider": "github-copilot",
+  "defaultModel": "claude-sonnet-4.6",
+  "defaultThinkingLevel": "medium",
+  "prompts": [
+    "/Users/smcolby/repos/agents/pi"
+  ],
+  "packages": [
+    "npm:pi-subagents",
+    "npm:context-mode",
+    "npm:@ollama/pi-web-search",
+    "npm:pi-lens",
+    "npm:pi-rtk-optimizer",
+    "npm:pi-powerline-footer"
+  ]
+}
