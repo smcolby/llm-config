@@ -75,7 +75,7 @@ git add -A && git commit -m "..."
 python tools/sync.py --agents --apply   # renders harnesses/*/agents/
 python tools/verify.py
 git add -A && git commit -m "..."
-# ~/repos/agents/pi/ and ~/repos/agents/copilot-cli/ are symlinks — live immediately
+# harnesses/pi/agents/ and harnesses/copilot/agents/ are live immediately via symlinks in pi/copilot
 ```
 
 ### Add a new skill
@@ -158,7 +158,7 @@ Then complete the checklist bootstrap prints:
 | Step | File | What to change |
 |------|------|----------------|
 | Ollama host | `harnesses/pi/models.json` | Update `baseUrl` from `http://loki.local:11434` to this machine's address |
-| Prompt path | `harnesses/pi/settings.json` | Update `prompts` absolute path if directory layout differs |
+| Prompt path | `harnesses/pi/settings.json` | Update `prompts` absolute path — should be `~/repos/llm-config/harnesses/pi/agents` |
 | CC MCP | `~/.claude.json` | Register context-mode MCP server |
 | Copilot MCP | `~/.copilot/mcp-config.json` | Register context-mode MCP server |
 | Pi auth | `~/.pi/agent/auth.json` | Create with API keys (never committed) |
@@ -225,13 +225,11 @@ echo '#!/bin/sh\npython tools/verify.py --all' > .git/hooks/pre-commit && chmod 
 | `~/.pi/agent/models.json` | `harnesses/pi/models.json` |
 | `~/.pi/agent/claude-bridge.json` | `harnesses/pi/claude-bridge.json` |
 | `~/.pi/agent/skills/wiki-ops/` | `~/repos/llm-wiki/.pi/skills/wiki-ops/` |
-| `~/repos/agents/pi/` | `harnesses/pi/agents/` |
 | `~/.claude/CLAUDE.md` | `harnesses/claude-code/CLAUDE.md` |
 | `~/.claude/RTK.md` | `harnesses/claude-code/RTK.md` |
 | `~/.claude/settings.json` | `harnesses/claude-code/settings.json` |
 | `~/.github/copilot-instructions.md` | `harnesses/copilot/instructions.md` |
 | `~/.copilot/skills/wiki-ops/` | `~/repos/llm-wiki/.pi/skills/wiki-ops/` |
-| `~/repos/agents/copilot-cli/` | `harnesses/copilot/agents/` |
 
 ---
 

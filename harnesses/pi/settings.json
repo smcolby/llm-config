@@ -4,7 +4,7 @@
   "defaultModel": "claude-sonnet-4-6",
   "defaultThinkingLevel": "medium",
   "prompts": [
-    "/Users/smcolby/repos/agents/pi"
+    "/Users/smcolby/repos/llm-config/harnesses/pi/agents"
   ],
   "packages": [
     "npm:pi-subagents",
