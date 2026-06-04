@@ -11,6 +11,7 @@ A single source of truth for all AI harness configurations: pi, Claude Code, and
 3. **Composition over generation.** Harness markdown files are readable, editable documents. Shared content is embedded inside fenced block markers. `sync.py` guards the fenced regions against drift rather than regenerating whole files from opaque templates.
 4. **Agents are rendered, not symlinked.** Because agent frontmatter differs per harness (Copilot adds `model` and `tools`; pi omits them), agent files are rendered by `sync.py` from a canonical shared body. The rendered files live in the repo and are symlinked into place.
 5. **Harness-specific sections are first-class.** Things that only make sense in one harness (pi skill routing, Copilot tool declarations, Claude Code `@`-include syntax) are kept in the harness layer and are never touched by sync. The verify tool knows to ignore them.
+6. **Blocks are universal or they are not blocks.** A shared block must be byte-for-byte identical in every harness that includes it. If a block needs harness-specific phrasing (e.g., a tool name that differs per harness), that phrasing belongs in the wrapper lines outside the fence — not inside the block. If the *rules themselves* differ per harness, it is not one block but two, and they should have distinct names. There is no per-harness block override mechanism; adding one would erode the invariant that makes `verify.py` simple and trustworthy.
 
 ---
 
@@ -279,6 +280,62 @@ Claude Code has no native agent file format. The persona is available to CC via 
 **Single file authored:** `shared/agents/scientist.md`
 **Commands:** `sync.py --agents --apply` → `verify.py`
 **Manual propagation:** none — symlinks are live
+
+---
+
+### Dropping a harness (e.g., a billing or terms change makes a harness untenable)
+
+This is the exact scenario that motivated this repo. When a harness becomes unavailable or undesirable, the goal is to remove it without touching anything shared.
+
+1. Remove the harness symlinks: run `bootstrap.sh --remove {harness}` (or manually `unlink` each symlink listed in the symlink map for that harness).
+2. Move `harnesses/{harness}/` to `harnesses/_deprecated/{harness}/` — keep it in the repo for reference, don't delete it.
+3. Remove the harness from `tools/harness_agent_config.toml`.
+4. Run `python tools/verify.py` — should pass cleanly since the removed harness is no longer checked.
+5. Commit.
+
+Shared blocks, skills, and agent bodies are untouched. The remaining harnesses continue operating without interruption. If the harness comes back (billing restored, terms clarified), restore the symlinks and re-add to `harness_agent_config.toml`.
+
+**Files changed:** `tools/harness_agent_config.toml`, `harnesses/_deprecated/` (move)
+**Commands:** `bootstrap.sh --remove {harness}` → `verify.py`
+**Risk to other harnesses:** none
+
+---
+
+### Setting up a fresh machine
+
+`bootstrap.sh` is idempotent — safe to re-run. The sequence on a new machine:
+
+1. Clone the repo: `git clone ... ~/repos/llm-config`
+2. Run `./tools/bootstrap.sh` — creates all symlinks, checks MCP registrations, reports what needs manual attention.
+3. Edit machine-specific values by hand (bootstrap prints a checklist):
+   - `harnesses/pi/models.json` — update Ollama `baseUrl` to this machine's address
+   - `harnesses/pi/settings.json` — update absolute `prompts` path if it differs
+   - Register context-mode in each harness's MCP config (`~/.claude.json`, `~/.copilot/mcp-config.json`, pi internals)
+   - Copy `~/.pi/agent/auth.json` from backup or recreate with API keys (never committed)
+4. Run `python tools/verify.py` — confirms no drift was introduced during setup.
+
+Machine-specific values are never committed and never synced. The repo is the config; the machine is the runtime. Bootstrap bridges the two.
+
+**Files changed:** machine-local only (MCP configs, auth.json, machine-specific JSON values)
+**Commands:** `bootstrap.sh` → `verify.py`
+**Committed changes:** none
+
+---
+
+### Updating an existing skill (e.g., improving wiki-ops workflows)
+
+Unlike adding a skill, updating one requires no bootstrap step — symlinks already point at the source.
+
+1. Edit `shared/skills/wiki-ops/SKILL.md` directly.
+2. The change is live immediately in pi and Copilot (symlinks) and in Claude Code (file is read at session start via `@`-include).
+3. Run `python tools/verify.py` — skills are not block-fenced, so this mainly confirms no instruction file drift was accidentally introduced.
+4. Commit.
+
+There is no sync step because the skill directory is symlinked wholesale, not copied or rendered. The canonical file *is* the deployed file for pi and Copilot. For Claude Code the `@`-include re-reads the file on each session, so updates take effect without any action.
+
+**Single file edited:** `shared/skills/wiki-ops/SKILL.md`
+**Commands:** `verify.py` (optional sanity check)
+**Manual propagation:** none — symlinks and `@`-include handle it
 
 ---
 
