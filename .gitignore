@@ -12,3 +12,7 @@ agent/auth.json
 # Editor
 .vscode/
 .idea/
+harnesses/*/auth.json
+
+# Deprecated harnesses (removed but kept for reference)
+harnesses/_deprecated/

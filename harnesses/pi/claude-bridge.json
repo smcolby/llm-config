@@ -1,0 +1,13 @@
+{
+  "provider": {
+    "strictMcpConfig": true,
+    "settingSources": []
+  },
+  "askClaude": {
+    "enabled": true,
+    "allowFullMode": true,
+    "defaultMode": "read",
+    "defaultIsolated": false,
+    "appendSkills": true
+  }
+}
