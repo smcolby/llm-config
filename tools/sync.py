@@ -164,7 +164,8 @@ def main():
             print("  • Change was accidental or you want shared to win:")
             print("      Run --apply to overwrite the harness block with shared.")
             print()
-            print("⚠ --apply always overwrites harness blocks with shared. Promote first or lose the change.")
+            print("⚠ --apply always overwrites harness blocks with shared."
+                  " Promote first or lose the change.")
             sys.exit(1)
 
 

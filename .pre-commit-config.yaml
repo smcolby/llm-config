@@ -1,0 +1,21 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.16
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.410
+    hooks:
+      - id: pyright
+
+  - repo: local
+    hooks:
+      - id: verify-congruence
+        name: verify congruence
+        entry: python tools/verify.py
+        language: system
+        pass_filenames: false
+        always_run: true

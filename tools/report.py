@@ -8,6 +8,7 @@ gap analysis.
 Usage:
   python tools/report.py
 """
+
 import os
 import re
 import sys
@@ -16,41 +17,47 @@ from pathlib import Path
 
 from rich.console import Console  # pip install rich
 
-REPO          = Path(__file__).parent.parent
-HOME          = Path.home()
-BLOCKS_DIR    = REPO / "shared/blocks"
-AGENTS_DIR    = REPO / "shared/agents"
+REPO = Path(__file__).parent.parent
+HOME = Path.home()
+BLOCKS_DIR = REPO / "shared/blocks"
+AGENTS_DIR = REPO / "shared/agents"
 HARNESSES_DIR = REPO / "harnesses"
-AGENT_CONFIG  = REPO / "tools/harness_agent_config.toml"
+AGENT_CONFIG = REPO / "tools/harness_agent_config.toml"
 
 HARNESS_FILES = {
-    "pi":          HARNESSES_DIR / "pi/AGENTS.md",
+    "pi": HARNESSES_DIR / "pi/AGENTS.md",
     "claude-code": HARNESSES_DIR / "claude-code/CLAUDE.md",
-    "copilot":     HARNESSES_DIR / "copilot/instructions.md",
+    "copilot": HARNESSES_DIR / "copilot/instructions.md",
 }
 
 HARNESS_LIVE_INSTR = {
-    "pi":          HOME / ".pi/agent/AGENTS.md",
+    "pi": HOME / ".pi/agent/AGENTS.md",
     "claude-code": HOME / ".claude/CLAUDE.md",
-    "copilot":     HOME / ".github/copilot-instructions.md",
+    "copilot": HOME / ".github/copilot-instructions.md",
 }
 
 # Symlinks that bootstrap.sh is responsible for creating
 SYMLINK_MAP = {
     "pi": [
-        (REPO / "harnesses/pi/AGENTS.md",          HOME / ".pi/agent/AGENTS.md"),
-        (REPO / "harnesses/pi/settings.json",       HOME / ".pi/agent/settings.json"),
-        (REPO / "harnesses/pi/models.json",         HOME / ".pi/agent/models.json"),
-        (REPO / "harnesses/pi/claude-bridge.json",  HOME / ".pi/agent/claude-bridge.json"),
+        (REPO / "harnesses/pi/AGENTS.md", HOME / ".pi/agent/AGENTS.md"),
+        (REPO / "harnesses/pi/settings.json", HOME / ".pi/agent/settings.json"),
+        (REPO / "harnesses/pi/models.json", HOME / ".pi/agent/models.json"),
+        (
+            REPO / "harnesses/pi/claude-bridge.json",
+            HOME / ".pi/agent/claude-bridge.json",
+        ),
     ],
     "claude-code": [
-        (REPO / "harnesses/claude-code/CLAUDE.md",     HOME / ".claude/CLAUDE.md"),
-        (REPO / "harnesses/claude-code/RTK.md",        HOME / ".claude/RTK.md"),
+        (REPO / "harnesses/claude-code/CLAUDE.md", HOME / ".claude/CLAUDE.md"),
+        (REPO / "harnesses/claude-code/RTK.md", HOME / ".claude/RTK.md"),
         (REPO / "harnesses/claude-code/settings.json", HOME / ".claude/settings.json"),
     ],
     "copilot": [
-        (REPO / "harnesses/copilot/instructions.md", HOME / ".github/copilot-instructions.md"),
-        (REPO / "harnesses/copilot/agents",          HOME / ".copilot/agents"),
+        (
+            REPO / "harnesses/copilot/instructions.md",
+            HOME / ".github/copilot-instructions.md",
+        ),
+        (REPO / "harnesses/copilot/agents", HOME / ".copilot/agents"),
     ],
 }
 
@@ -63,6 +70,7 @@ console = Console()
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
+
 
 def short(p: Path) -> str:
     """Return path relative to repo root, or ~/... for home-relative paths."""
@@ -113,6 +121,7 @@ def harness_row(harness: str, content: str):
 
 # ── blocks ────────────────────────────────────────────────────────────────────
 
+
 def inspect_blocks(errors: list, warnings: list):
     section("SHARED BLOCKS")
 
@@ -126,11 +135,17 @@ def inspect_blocks(errors: list, warnings: list):
                 errors.append(f"block '{name}': {harness} instruction file not found")
                 continue
 
-            has_fence = bool(re.search(rf"<!-- block: {re.escape(name)} -->", instr.read_text()))
+            has_fence = bool(
+                re.search(rf"<!-- block: {re.escape(name)} -->", instr.read_text())
+            )
             live = HARNESS_LIVE_INSTR[harness]
             sym_ok, sym_msg = check_symlink(instr, live)
 
-            fence_s = s_ok("fence") if has_fence else s_warn("no fence", "not included in this harness")
+            fence_s = (
+                s_ok("fence")
+                if has_fence
+                else s_warn("no fence", "not included in this harness")
+            )
             if not has_fence:
                 warnings.append(f"block '{name}': not included in {harness}")
 
@@ -143,6 +158,7 @@ def inspect_blocks(errors: list, warnings: list):
 
 # ── agents ────────────────────────────────────────────────────────────────────
 
+
 def inspect_agents(errors: list, warnings: list):
     section("SHARED AGENTS")
 
@@ -154,11 +170,18 @@ def inspect_agents(errors: list, warnings: list):
         console.print(f"\n  [bold cyan]{name}[/bold cyan]")
 
         for harness, hconf in config["harnesses"].items():
-            rendered = HARNESSES_DIR / harness / "agents" / f"{name}{hconf['filename_suffix']}"
+            rendered = (
+                HARNESSES_DIR / harness / "agents" / f"{name}{hconf['filename_suffix']}"
+            )
             if rendered.exists():
                 harness_row(harness, s_ok(short(rendered)))
             else:
-                harness_row(harness, s_err(f"{short(rendered)}  [dim](run sync.py --agents --apply)[/dim]"))
+                harness_row(
+                    harness,
+                    s_err(
+                        f"{short(rendered)}  [dim](run sync.py --agents --apply)[/dim]"
+                    ),
+                )
                 errors.append(f"agent '{name}': rendered file missing in {harness}")
 
         harness_row(
@@ -169,13 +192,14 @@ def inspect_agents(errors: list, warnings: list):
 
 # ── skills ────────────────────────────────────────────────────────────────────
 
+
 def inspect_skills(errors: list, warnings: list):
     section("SKILLS")
     skills: dict[str, dict[str, Path]] = {}
 
     for skill_dir, harness in [
         (HOME / ".pi/agent/skills", "pi"),
-        (HOME / ".copilot/skills",  "copilot"),
+        (HOME / ".copilot/skills", "copilot"),
     ]:
         if skill_dir.exists():
             for item in sorted(skill_dir.iterdir()):
@@ -219,13 +243,16 @@ def inspect_skills(errors: list, warnings: list):
                     errors.append(f"skill '{skill_name}': {harness} symlink dangling")
             elif p.is_dir():
                 harness_row(harness, s_warn(short(p), "directory, not a symlink"))
-                warnings.append(f"skill '{skill_name}': {harness} path is a directory, not a symlink")
+                warnings.append(
+                    f"skill '{skill_name}': {harness} path is a directory, not a symlink"
+                )
             else:
                 harness_row(harness, s_err(f"{short(p)} not found"))
                 errors.append(f"skill '{skill_name}': {harness} not wired")
 
 
 # ── symlinks ──────────────────────────────────────────────────────────────────
+
 
 def inspect_symlinks(errors: list, warnings: list):
     section("SYMLINKS")
@@ -243,6 +270,7 @@ def inspect_symlinks(errors: list, warnings: list):
 
 # ── harness-specific ──────────────────────────────────────────────────────────
 
+
 def inspect_harness_specific():
     section("HARNESS-SPECIFIC SECTIONS  (diagnostic)")
 
@@ -255,8 +283,10 @@ def inspect_harness_specific():
         # strip all fenced regions; what remains is harness-specific
         stripped = FENCE_RE.sub("", instr.read_text())
         items = [
-            line.strip() for line in stripped.splitlines()
-            if line.strip() and line.strip() != "---"
+            line.strip()
+            for line in stripped.splitlines()
+            if line.strip()
+            and line.strip() != "---"
             and (line.strip().startswith("#") or line.strip().startswith("@"))
         ]
 
@@ -272,12 +302,16 @@ def inspect_harness_specific():
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+
 def main():
     errors: list[str] = []
     warnings: list[str] = []
 
     console.print()
-    console.rule("[bold bright_blue]llm-config system inspection[/bold bright_blue]", style="bright_blue")
+    console.rule(
+        "[bold bright_blue]llm-config system inspection[/bold bright_blue]",
+        style="bright_blue",
+    )
 
     inspect_blocks(errors, warnings)
     inspect_agents(errors, warnings)
@@ -297,9 +331,13 @@ def main():
             console.print(f"  [yellow]!  {msg}[/yellow]")
         console.print()
         if errors:
-            console.print(f"  [red]{len(errors)} error(s)[/red]  ·  [yellow]{len(warnings)} warning(s)[/yellow]")
+            e, w = len(errors), len(warnings)
+            console.print(f"  [red]{e} error(s)[/red]  ·  [yellow]{w} warning(s)[/yellow]")
         else:
-            console.print(f"  [green]✓  no hard errors[/green]  ·  [yellow]{len(warnings)} warning(s)[/yellow]")
+            console.print(
+                f"  [green]✓  no hard errors[/green]  ·  "
+                f"[yellow]{len(warnings)} warning(s)[/yellow]"
+            )
 
     console.print()
     sys.exit(1 if errors else 0)

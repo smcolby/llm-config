@@ -177,7 +177,33 @@ python tools/verify.py              # check all harnesses
 python tools/verify.py --harness pi # check one harness only
 ```
 
-Add `python tools/verify.py` to `.git/hooks/pre-commit` to catch drift before it lands.
+Pre-commit hooks (configured in `.pre-commit-config.yaml`) run `verify.py` alongside ruff and pyright on every commit.
+
+---
+
+## System inspection (report.py)
+
+`verify.py` guards against content drift but says nothing about whether the live system is actually wired. A block can be byte-for-byte correct in the repo and still not be deployed if its instruction file's symlink is broken. A skill can be defined and never linked. Without a tool to surface the live state, the gap between *what the repo says* and *what's actually running* is invisible.
+
+`report.py` provides a human-readable view of the full system topology at any point in time. It shows:
+- Every shared block, which harnesses include it as a fence, and whether the instruction file is correctly symlinked to its live location
+- Every shared agent, which harnesses have a rendered file, and a note for harnesses with no native agent format
+- Every detected skill, whether its symlinks are valid and non-dangling, and the live target path
+- All bootstrap-managed symlinks and their states
+- Harness-specific content outside block fences, per harness — the primary gap-analysis surface for identifying functionality that exists in one harness but not others
+
+Run it with:
+```bash
+python tools/report.py
+```
+
+Exit codes:
+- `0` — all hard checks passed (symlinks valid, renders present, skill targets exist)
+- `1` — at least one hard check failed; details printed inline
+
+Harness-specific sections are always shown and never cause a non-zero exit — they are diagnostic, not errors. The intent is to make intentional per-harness differences visible so you can decide whether to promote them to shared blocks or leave them as deliberate divergence.
+
+`report.py` requires `rich` (`pip install rich`) for formatted output.
 
 ---
 

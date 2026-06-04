@@ -2,13 +2,27 @@
 
 Single source of truth for AI harness configurations: **pi**, **Claude Code**, and **GitHub Copilot CLI**. Shared content is authored once and propagated to all harnesses via symlinks and a sync tool. A verify script tests congruence and can run as a pre-commit hook.
 
-AI coding assistants each read behavioral instructions from their own config files (`AGENTS.md`, `CLAUDE.md`, `instructions.md`). When you use more than one, the same rules — code style, safety guardrails, tool routing, agent personas — need to live in each of them. Edit one and you need to remember to update the others. They drift. This repo fixes that: shared rules live in one place, harness configs are derived from them, and a verification step makes drift visible rather than silent.
+AI coding assistants each read behavioral instructions from their own config files (`AGENTS.md`, `CLAUDE.md`, `copilot-instructions.md`). When you use more than one, the same rules — code style, safety guardrails, tool routing, agent personas — need to live in each of them. Edit one and you need to remember to update the others. They drift. This repo fixes that: shared rules live in one place, harness configs are derived from them, and a verification step makes drift visible rather than silent.
+
+> **This repository is an instance of the pattern described in [pattern.md](pattern.md).** To implement the pattern for your own setup, point your LLM at `pattern.md` and have it build from scratch — or use this repo as a reference implementation. Adopting the repo directly assumes pi, Claude Code, and GitHub Copilot CLI as your harnesses.
+
+---
+
+## Design rationale
+
+See `pattern.md` for the full design, decision record, and usage scenarios. Key decisions:
+
+- **Composition over generation** — harness files are human-readable; sync only touches fenced regions
+- **Symlinks, not copies** — what's committed is what's deployed
+- **Blocks are universal or they are not blocks** — no per-harness block variants
+- **Agents are rendered** — frontmatter differs per harness; bodies do not
+- **Skills travel with their domain** — wiki-ops stays in `llm-wiki`; this repo holds the wiring
 
 ---
 
 ## How it works
 
-Harness instruction files (`AGENTS.md`, `CLAUDE.md`, `instructions.md`) contain fenced regions:
+Harness instruction files (`AGENTS.md`, `CLAUDE.md`, `copilot-instructions.md`) contain fenced regions:
 
 ```markdown
 ## Code Formatting & Style
@@ -151,6 +165,9 @@ git clone git@github.com:smcolby/llm-wiki.git  ~/repos/llm-wiki
 
 # 3. wire everything
 bash ~/repos/llm-config/tools/bootstrap.sh   # symlinks everything, prints a manual-steps checklist
+
+# 4. install pre-commit hooks
+pip install pre-commit && pre-commit install
 ```
 
 Then complete the checklist bootstrap prints:
@@ -198,8 +215,23 @@ python tools/verify.py                   # all harnesses
 python tools/verify.py --harness pi      # one harness
 python tools/verify.py --agents          # agent bodies only
 
-# install as pre-commit hook
-echo '#!/bin/sh\npython tools/verify.py --all' > .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+```
+
+## Linting and type checking
+
+Python tools are linted with [ruff](https://github.com/astral-sh/ruff) and type-checked with [pyright](https://github.com/microsoft/pyright). Config lives in `pyproject.toml`.
+
+```bash
+ruff check tools/          # lint
+ruff format tools/         # format
+npx pyright tools/         # type check
+```
+
+All three, plus `verify.py`, run automatically as pre-commit hooks:
+
+```bash
+pip install pre-commit
+pre-commit install         # installs .pre-commit-config.yaml hooks into .git/hooks/
 ```
 
 ## System inspection
@@ -219,6 +251,8 @@ Prints every shared component and how it manifests per harness, verifies all sym
 - If a block needs genuinely different rules per harness, it is not one block — split it and give each a distinct name.
 - Blocks are plain markdown prose. No templating, no variables, no conditionals.
 
+The `rtk` block is the canonical example of a correctly shared block: RTK supports Claude Code (PreToolUse hook), Copilot CLI (deny-with-suggestion), and pi (TypeScript extension) with identical LLM-facing instructions across all three. The integration mechanism differs per harness; the instructions do not.
+
 ---
 
 ## Symlink map (reference)
@@ -237,14 +271,4 @@ Prints every shared component and how it manifests per harness, verifies all sym
 | `~/.copilot/agents/` | `harnesses/copilot/agents/` |
 | `~/.copilot/skills/wiki-ops/` | `~/repos/llm-wiki/.pi/skills/wiki-ops/` |
 
----
 
-## Design rationale
-
-See `pattern.md` for the full design, decision record, and usage scenarios. Key decisions:
-
-- **Composition over generation** — harness files are human-readable; sync only touches fenced regions
-- **Symlinks, not copies** — what's committed is what's deployed
-- **Blocks are universal or they are not blocks** — no per-harness block variants
-- **Agents are rendered** — frontmatter differs per harness; bodies do not
-- **Skills travel with their domain** — wiki-ops stays in `llm-wiki`; this repo holds the wiring
