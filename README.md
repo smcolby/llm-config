@@ -240,14 +240,14 @@ For domain-specific skills tightly coupled to a single project, the skill can li
 
 ## Extensions
 
-Extensions are globally installed tools (brew, npm) that need per-harness wiring. The installation itself is outside llm-config; the repo owns the wiring.
+Extensions are globally installed tools that need per-harness wiring. **llm-config does not install them** — that is the user's responsibility. The repo only owns the wiring: which files to symlink, which mechanism checks to verify, and which one-time setup commands to print in bootstrap's checklist.
 
-| Extension | Install | Source |
-|-----------|---------|--------|
+| Extension | Install yourself first | Wiring manifest |
+|-----------|------------------------|-----------------|
 | RTK | `brew install rtk` | `shared/extensions/rtk.toml` |
 | context-mode | `npm install -g context-mode` | `shared/extensions/context-mode.toml` |
 
-Each manifest declares: symlinks to create, mechanism checks to verify, and one-time setup commands to print in bootstrap's checklist. `report.py` reads manifests to verify extension wiring at any time.
+`report.py` reads manifests to verify extension wiring at any time. If an extension is not globally installed, its verify checks will fail — that is expected on machines where it has not been installed.
 
 ## Verify congruence
 
