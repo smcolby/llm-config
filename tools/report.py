@@ -142,6 +142,15 @@ def _load_json(path: Path) -> dict:
         return {}
 
 
+def _ext_check_pi_package(pkg: str) -> tuple[bool, str]:
+    packages = _load_json(HARNESSES_DIR / "pi/settings.json").get("packages", [])
+    return (
+        (True, f"package: {pkg}")
+        if any(pkg in p for p in packages)
+        else (False, f"'{pkg}' not in packages in harnesses/pi/settings.json")
+    )
+
+
 def _ext_check_hook(cmd: str) -> tuple[bool, str]:
     hooks = _load_json(HARNESSES_DIR / "claude-code/settings.json").get("hooks", {})
     for entry in hooks.get("PreToolUse", []):
@@ -203,6 +212,14 @@ def inspect_extensions(errors: list, warnings: list):
                 else:
                     parts.append(s_err(f"{short(dst)}: {msg}"))
                     errors.append(f"extension '{name}' ({harness}) symlink: {msg}")
+
+            if "verify_pi_package" in hconf:
+                ok, msg = _ext_check_pi_package(hconf["verify_pi_package"])
+                if ok:
+                    parts.append(s_ok(msg))
+                else:
+                    parts.append(s_err(msg))
+                    errors.append(f"extension '{name}' ({harness}): {msg}")
 
             if "verify_hook" in hconf:
                 ok, msg = _ext_check_hook(hconf["verify_hook"])
