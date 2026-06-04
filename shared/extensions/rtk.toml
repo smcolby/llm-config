@@ -5,11 +5,9 @@ block = "rtk"
 
 [harnesses.claude-code]
 verify_hook = "rtk hook claude"
-manual_setup = "rtk init -g"
 
 [harnesses.copilot]
 symlinks = [["harnesses/copilot/hooks/rtk-rewrite.json", "~/.github/hooks/rtk-rewrite.json"]]
-manual_setup = "rtk init -g --copilot"
 
 [harnesses.pi]
 symlinks = [["harnesses/pi/extensions/rtk.ts", "~/.pi/agent/extensions/rtk.ts"]]
