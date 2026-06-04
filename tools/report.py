@@ -45,6 +45,7 @@ SYMLINK_MAP = {
         (REPO / "harnesses/pi/AGENTS.md", HOME / ".pi/agent/AGENTS.md"),
         (REPO / "harnesses/pi/settings.json", HOME / ".pi/agent/settings.json"),
         (REPO / "harnesses/pi/models.json", HOME / ".pi/agent/models.json"),
+        (REPO / "harnesses/pi/mcp.json", HOME / ".pi/agent/mcp.json"),
         (
             REPO / "harnesses/pi/claude-bridge.json",
             HOME / ".pi/agent/claude-bridge.json",
@@ -60,6 +61,7 @@ SYMLINK_MAP = {
             REPO / "harnesses/copilot/copilot-instructions.md",
             HOME / ".github/copilot-instructions.md",
         ),
+        (REPO / "harnesses/copilot/mcp-config.json", HOME / ".copilot/mcp-config.json"),
         (REPO / "harnesses/copilot/agents", HOME / ".copilot/agents"),
     ],
 }

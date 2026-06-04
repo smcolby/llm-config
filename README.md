@@ -218,8 +218,7 @@ Then complete the checklist bootstrap prints:
 | `harnesses/*/auth.json` | API keys |
 | `~/.pi/agent/npm/` | Installed packages (like node_modules) |
 | `~/.pi/agent/sessions/` | Ephemeral session data |
-| `~/.claude.json` | MCP config may contain tokens |
-| `~/.copilot/mcp-config.json` | MCP config may contain tokens |
+| `~/.claude.json` | MCP config — managed by Claude Code, may contain tokens |
 | `harnesses/_deprecated/` | Archived harnesses — kept locally, gitignored |
 
 ---
@@ -310,7 +309,9 @@ The `rtk` block is the canonical example of a correctly shared block: RTK suppor
 | `~/.claude/settings.json` | `harnesses/claude-code/settings.json` |
 | `~/.github/copilot-instructions.md` | `harnesses/copilot/copilot-instructions.md` |
 | `~/.github/hooks/rtk-rewrite.json` | `harnesses/copilot/hooks/rtk-rewrite.json` |
+| `~/.copilot/mcp-config.json` | `harnesses/copilot/mcp-config.json` |
 | `~/.copilot/agents/` | `harnesses/copilot/agents/` |
+| `~/.pi/agent/mcp.json` | `harnesses/pi/mcp.json` |
 | `~/.copilot/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 
 

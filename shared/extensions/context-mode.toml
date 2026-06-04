@@ -10,9 +10,7 @@ manual_setup = "/plugin marketplace add mksglu/context-mode"
 [harnesses.copilot]
 symlinks = [["harnesses/copilot/hooks/context-mode.json", "~/.github/hooks/context-mode.json"]]
 verify_mcp = "~/.copilot/mcp-config.json"
-manual_setup = "Add to ~/.copilot/mcp-config.json: {\"mcpServers\": {\"context-mode\": {\"command\": \"context-mode\"}}}"
 
 [harnesses.pi]
 verify_pi_package = "npm:context-mode"
 verify_mcp = "~/.pi/agent/mcp.json"
-manual_setup = "Create ~/.pi/agent/mcp.json with mcpServers: {\"context-mode\": {\"command\": \"context-mode\"}}"

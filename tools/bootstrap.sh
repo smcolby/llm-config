@@ -27,6 +27,7 @@ remove_harness() {
 		unlink "$HOME_DIR/.pi/agent/AGENTS.md" 2>/dev/null || true
 		unlink "$HOME_DIR/.pi/agent/settings.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.pi/agent/models.json" 2>/dev/null || true
+		unlink "$HOME_DIR/.pi/agent/mcp.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.pi/agent/claude-bridge.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.pi/agent/skills/wiki-ops" 2>/dev/null || true
 		;;
@@ -37,6 +38,7 @@ remove_harness() {
 		;;
 	copilot)
 		unlink "$HOME_DIR/.github/copilot-instructions.md" 2>/dev/null || true
+		unlink "$HOME_DIR/.copilot/mcp-config.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.copilot/skills/wiki-ops" 2>/dev/null || true
 		;;
 	*)
@@ -92,6 +94,7 @@ if [ -d "$HOME_DIR/.pi/agent" ]; then
 	link "$REPO/harnesses/pi/AGENTS.md" "$HOME_DIR/.pi/agent/AGENTS.md"
 	link "$REPO/harnesses/pi/settings.json" "$HOME_DIR/.pi/agent/settings.json"
 	link "$REPO/harnesses/pi/models.json" "$HOME_DIR/.pi/agent/models.json"
+	link "$REPO/harnesses/pi/mcp.json" "$HOME_DIR/.pi/agent/mcp.json"
 	link "$REPO/harnesses/pi/claude-bridge.json" "$HOME_DIR/.pi/agent/claude-bridge.json"
 	wire_skill "wiki-ops"
 else
@@ -116,6 +119,7 @@ echo ""
 echo "Wiring copilot..."
 mkdir -p "$HOME_DIR/.github" "$HOME_DIR/.copilot/skills"
 link "$REPO/harnesses/copilot/copilot-instructions.md" "$HOME_DIR/.github/copilot-instructions.md"
+link "$REPO/harnesses/copilot/mcp-config.json" "$HOME_DIR/.copilot/mcp-config.json"
 link "$REPO/harnesses/copilot/agents" "$HOME_DIR/.copilot/agents"
 wire_skill "wiki-ops" # no-op if already done for pi (idempotent)
 echo ""
