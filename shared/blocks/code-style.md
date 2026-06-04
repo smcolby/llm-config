@@ -2,3 +2,4 @@
 - Sentence case for comments and print statements: capitalize the first word and acronyms; do not capitalize common technical terms mid-sentence unless they are proper nouns.
 - Do not number sequential steps inside code comment blocks.
 - Do not end comments with a period.
+- NumPy style docstrings for Python code, unless superceded by repo-specific instructions.

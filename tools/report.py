@@ -9,6 +9,7 @@ Usage:
   python tools/report.py
 """
 
+import json
 import os
 import re
 import sys
@@ -119,7 +120,84 @@ def harness_row(harness: str, content: str):
     console.print(f"    [dim]{harness:<14}[/dim]  {content}")
 
 
+# ── activation helpers ────────────────────────────────────────────────────────
+
+
+def _load_json(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text())
+    except Exception:
+        return {}
+
+
+def _check_pi_package(pkg: str) -> tuple[bool, str]:
+    packages = _load_json(HARNESSES_DIR / "pi/settings.json").get("packages", [])
+    return (
+        (True, f"package: {pkg}")
+        if any(pkg in p for p in packages)
+        else (False, f"package '{pkg}' not in harnesses/pi/settings.json")
+    )
+
+
+def _check_cc_hook(cmd: str) -> tuple[bool, str]:
+    hooks = _load_json(HARNESSES_DIR / "claude-code/settings.json").get("hooks", {})
+    for entry in hooks.get("PreToolUse", []):
+        for h in entry.get("hooks", []):
+            if cmd in h.get("command", ""):
+                return True, f"PreToolUse hook: {h['command']}"
+    return False, f"no PreToolUse hook containing '{cmd}' in harnesses/claude-code/settings.json"
+
+
+def _check_mcp(config_path: Path, server: str) -> tuple[bool, str]:
+    if not config_path.exists():
+        return False, f"{short(config_path)}: file not found"
+    servers = _load_json(config_path).get("mcpServers", {})
+    return (
+        (True, f"registered in {short(config_path)}")
+        if any(server in k for k in servers)
+        else (False, f"'{server}' not in mcpServers in {short(config_path)}")
+    )
+
+
+# Per-block activation: checks that the mechanism behind each block is wired,
+# not just that the fence is present. Blocks without harness-side mechanisms
+# (code-style, execution-guardrails, etc.) are omitted — fences suffice.
+BLOCK_ACTIVATION: dict[str, dict[str, tuple[bool, str]]] = {}
+
+
+def _build_activation_config() -> dict[str, dict[str, tuple[bool, str]]]:
+    return {
+        "rtk": {
+            "pi": _check_pi_package("pi-rtk-optimizer"),
+            "claude-code": _check_cc_hook("rtk"),
+            "copilot": (None, "deny-with-suggestion — no config to verify"),  # type: ignore[dict-item]
+        },
+        "context-mode": {
+            "pi": _check_pi_package("context-mode"),
+            "claude-code": _check_mcp(HOME / ".claude.json", "context-mode"),
+            "copilot": _check_mcp(HOME / ".copilot/mcp-config.json", "context-mode"),
+        },
+    }
+
+
 # ── blocks ────────────────────────────────────────────────────────────────────
+
+
+def inspect_activation(errors: list, warnings: list):
+    section("BLOCK ACTIVATION")
+    activation = _build_activation_config()
+
+    for block_name, harness_checks in activation.items():
+        console.print(f"\n  [bold cyan]{block_name}[/bold cyan]")
+        for harness, result in harness_checks.items():
+            ok, detail = result
+            if ok is None:
+                harness_row(harness, s_warn(detail))
+            elif ok:
+                harness_row(harness, s_ok(detail))
+            else:
+                harness_row(harness, s_err(detail))
+                errors.append(f"activation '{block_name}' ({harness}): {detail}")
 
 
 def inspect_blocks(errors: list, warnings: list):
@@ -305,6 +383,7 @@ def main():
         style="bright_blue",
     )
 
+    inspect_activation(errors, warnings)
     inspect_blocks(errors, warnings)
     inspect_agents(errors, warnings)
     inspect_skills(errors, warnings)
