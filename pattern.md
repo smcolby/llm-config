@@ -116,15 +116,15 @@ frontmatter_extra = ""
 
 ## Skills — symlink mechanism
 
-`shared/skills/wiki-ops/SKILL.md` is the canonical skill definition. Each harness consumes it differently:
+All three harnesses use the same `SKILL.md` convention and the same `name`/`description` frontmatter format — they differ only in the directory they load from. This means `shared/skills/wiki-ops/SKILL.md` can be symlinked directly into all three with no per-harness adaptation.
 
-| Harness | Mechanism |
-|---------|-----------|
-| pi | `bootstrap.sh` symlinks `shared/skills/wiki-ops/` → `~/.pi/agent/skills/wiki-ops/` |
-| Claude Code | `shared/skills/wiki-ops/SKILL.md` content is embedded in `harnesses/claude-code/CLAUDE.md` as an `@`-include: `@llm-config/shared/skills/wiki-ops/SKILL.md` |
-| Copilot | Skill content is embedded inline in `harnesses/copilot/instructions.md` via a shared block fence |
+| Harness | Skill directory | Mechanism |
+|---------|----------------|-----------|
+| pi | `~/.pi/agent/skills/wiki-ops/` | `bootstrap.sh` symlinks `shared/skills/wiki-ops/` |
+| Copilot CLI | `~/.copilot/skills/wiki-ops/` | `bootstrap.sh` symlinks `shared/skills/wiki-ops/` |
+| Claude Code | `~/.claude/` (no native skill dir) | Skill content referenced via `@`-include in `harnesses/claude-code/CLAUDE.md`: `@llm-config/shared/skills/wiki-ops/SKILL.md` |
 
-New skills follow the same pattern: add `shared/skills/{name}/SKILL.md`, then add harness-specific wiring in `bootstrap.sh` (symlink for pi) and update the relevant harness instruction files.
+New skills follow the same pattern: add `shared/skills/{name}/SKILL.md`, then add symlink entries to `bootstrap.sh` for pi and Copilot, and an `@`-include line in the Claude Code CLAUDE.md.
 
 ---
 
@@ -151,11 +151,12 @@ REPO=~/repos/llm-config   # rename from pi-config after GitHub rename
 ~/.claude/settings.json          → $REPO/harnesses/claude-code/settings.json
 
 # copilot harness
-~/.github/copilot-instructions.md → $REPO/harnesses/copilot/instructions.md
-
-# copilot agents: same pattern as pi — keep existing external path
-~/repos/agents/copilot-cli/      → $REPO/harnesses/copilot/agents/
+~/.github/copilot-instructions.md  → $REPO/harnesses/copilot/instructions.md
+~/.copilot/skills/wiki-ops/        → $REPO/shared/skills/wiki-ops/
+~/repos/agents/copilot-cli/        → $REPO/harnesses/copilot/agents/
 ```
+
+**MCP registration is not symlinked** — each harness has its own MCP config file format and location (`~/.pi/` internals, `~/.claude.json`, `~/.copilot/mcp-config.json`). Context-mode must be registered in each separately. `bootstrap.sh` checks for the presence of each registration and prints a warning if missing, but does not write MCP configs automatically (they may contain tokens or other machine-specific state).
 
 Machine-specific values (Ollama `baseUrl`, `prompts` absolute paths) are documented in `README.md` and must be edited by hand after bootstrap. They are not templated — templating them would require a separate rendering step and break the "symlinked files are live files" principle.
 
@@ -222,6 +223,62 @@ Add `python tools/verify.py` to `.git/hooks/pre-commit` to catch drift before it
 | Ollama base URL | `harnesses/pi/models.json` | Machine-specific; never synced |
 | pi package list | `harnesses/pi/settings.json` | pi-specific extension ecosystem |
 | Copilot `tools` frontmatter | Generated via `harness_agent_config.toml` | Copilot-specific API |
+
+---
+
+## Usage scenarios
+
+These scenarios are the acceptance test for the pattern: if any requires more than one file edit plus a single command, the design should be revisited.
+
+---
+
+### Changing a universal behavior (e.g., banning em-dashes and "it's not X, it's Y" patterns)
+
+1. Edit `shared/blocks/code-style.md` — add the rule in prose.
+2. Run `python tools/sync.py --apply` — rewrites the `<!-- block: code-style -->` fence in `harnesses/pi/AGENTS.md`, `harnesses/claude-code/CLAUDE.md`, and `harnesses/copilot/instructions.md` simultaneously.
+3. Run `python tools/verify.py` — exits `0` if all three fences now match the canonical source.
+4. Commit. Because all three harness files are already symlinked into `~/.pi/agent/`, `~/.claude/`, and `~/.github/`, the change is live immediately with no further propagation step.
+
+Alternatively, ask any agent that has access to this repo: *"Add a rule to code-style.md banning em-dashes and 'it's not X, it's Y' phrasings, then sync and verify."* The agent edits the one file, runs `sync.py --apply`, runs `verify.py`, and reports back. The symlinks do the rest.
+
+**Single file edited:** `shared/blocks/code-style.md`
+**Commands:** `sync.py --apply` → `verify.py`
+**Manual propagation:** none — symlinks are live
+
+---
+
+### Adding new cross-harness functionality (e.g., connecting to llm-wiki)
+
+This involves two artifacts: a skill (procedural instructions for the LLM) and an activation block (a short note in each harness's global instructions telling it the skill exists).
+
+1. Write `shared/skills/wiki-ops/SKILL.md` — the canonical skill definition.
+2. Write `shared/blocks/llm-wiki.md` — a short block explaining how to invoke wiki-ops (the activation hint embedded in every harness's global instructions).
+3. Run `bootstrap.sh --skill wiki-ops` — symlinks the skill directory into `~/.pi/agent/skills/wiki-ops/` and `~/.copilot/skills/wiki-ops/`, and adds the `@`-include line to `harnesses/claude-code/CLAUDE.md`.
+4. Add `<!-- block: llm-wiki -->` fences in the appropriate section of each harness instruction file, then run `python tools/sync.py --apply` to populate them.
+5. Run `python tools/verify.py` — confirms all three harnesses have the identical activation block.
+
+An agent can own steps 3–5 entirely: *"Wire up the wiki-ops skill across all harnesses and verify congruence."* The agent runs bootstrap, adds the fences, syncs, and verifies. You only authored the skill and the block.
+
+**Files authored:** `shared/skills/wiki-ops/SKILL.md`, `shared/blocks/llm-wiki.md`
+**Commands:** `bootstrap.sh --skill wiki-ops` → `sync.py --apply` → `verify.py`
+**Manual propagation:** none
+
+---
+
+### Adding a new prompt template / persona (e.g., a new "scientist" agent)
+
+1. Write `shared/agents/scientist.md` — body only, no frontmatter. First line: `description: Domain scientist specializing in ...`
+2. Run `python tools/sync.py --agents --apply` — renders:
+   - `harnesses/pi/agents/scientist.md` (pi frontmatter: `description` only)
+   - `harnesses/copilot/agents/scientist.agent.md` (Copilot frontmatter: `description`, `name`, `model`, `tools`)
+3. Run `python tools/verify.py` — confirms rendered bodies match the canonical source.
+4. Commit. Because `~/repos/agents/pi/` and `~/repos/agents/copilot-cli/` are symlinks into the harness agent dirs, the new agent is immediately accessible in both.
+
+Claude Code has no native agent file format. The persona is available to CC via the pi bridge (`/agent scientist` in a pi session running CC as provider), or by referencing the shared body as a system prompt. If CC gains a native agent format, add it to `harness_agent_config.toml` and re-run sync.
+
+**Single file authored:** `shared/agents/scientist.md`
+**Commands:** `sync.py --agents --apply` → `verify.py`
+**Manual propagation:** none — symlinks are live
 
 ---
 
