@@ -22,6 +22,7 @@ REPO = Path(__file__).parent.parent
 HOME = Path.home()
 BLOCKS_DIR = REPO / "shared/blocks"
 AGENTS_DIR = REPO / "shared/agents"
+EXTENSIONS_DIR = REPO / "shared/extensions"
 HARNESSES_DIR = REPO / "harnesses"
 AGENT_CONFIG = REPO / "tools/harness_agent_config.toml"
 
@@ -37,7 +38,8 @@ HARNESS_LIVE_INSTR = {
     "copilot": HOME / ".github/copilot-instructions.md",
 }
 
-# Symlinks that bootstrap.sh is responsible for creating
+# Symlinks that bootstrap.sh is responsible for creating (core harness wiring only;
+# extension symlinks are defined in shared/extensions/*.toml and managed by wire_extensions.py)
 SYMLINK_MAP = {
     "pi": [
         (REPO / "harnesses/pi/AGENTS.md", HOME / ".pi/agent/AGENTS.md"),
@@ -57,10 +59,6 @@ SYMLINK_MAP = {
         (
             REPO / "harnesses/copilot/copilot-instructions.md",
             HOME / ".github/copilot-instructions.md",
-        ),
-        (
-            REPO / "harnesses/copilot/hooks/rtk-rewrite.json",
-            HOME / ".github/hooks/rtk-rewrite.json",
         ),
         (REPO / "harnesses/copilot/agents", HOME / ".copilot/agents"),
     ],
@@ -124,7 +122,17 @@ def harness_row(harness: str, content: str):
     console.print(f"    [dim]{harness:<14}[/dim]  {content}")
 
 
-# ── activation helpers ────────────────────────────────────────────────────────
+# ── extensions ────────────────────────────────────────────────────────────────
+
+
+def load_extensions() -> list[dict]:
+    if not EXTENSIONS_DIR.exists():
+        return []
+    result = []
+    for p in sorted(EXTENSIONS_DIR.glob("*.toml")):
+        with open(p, "rb") as f:
+            result.append(tomllib.load(f))
+    return result
 
 
 def _load_json(path: Path) -> dict:
@@ -134,82 +142,100 @@ def _load_json(path: Path) -> dict:
         return {}
 
 
-def _check_pi_package(pkg: str) -> tuple[bool, str]:
-    packages = _load_json(HARNESSES_DIR / "pi/settings.json").get("packages", [])
-    return (
-        (True, f"package: {pkg}")
-        if any(pkg in p for p in packages)
-        else (False, f"package '{pkg}' not in harnesses/pi/settings.json")
-    )
-
-
-def _check_cc_hook(cmd: str) -> tuple[bool, str]:
+def _ext_check_hook(cmd: str) -> tuple[bool, str]:
     hooks = _load_json(HARNESSES_DIR / "claude-code/settings.json").get("hooks", {})
     for entry in hooks.get("PreToolUse", []):
         for h in entry.get("hooks", []):
             if cmd in h.get("command", ""):
-                return True, f"PreToolUse hook: {h['command']}"
-    return False, f"no PreToolUse hook containing '{cmd}' in harnesses/claude-code/settings.json"
+                return True, f"hook: {h['command']}"
+    return False, f"no PreToolUse hook containing '{cmd}'"
 
 
-def _check_dir(path: Path, label: str) -> tuple[bool, str]:
+def _ext_check_dir(path_str: str) -> tuple[bool, str]:
+    path = Path(path_str.replace("~", str(HOME)))
     return (
-        (True, f"installed at {short(path)}")
+        (True, f"plugin dir: {short(path)}")
         if path.is_dir()
-        else (False, f"{label} directory not found: {short(path)}")
+        else (False, f"dir not found: {short(path)}")
     )
 
 
-def _check_mcp(config_path: Path, server: str) -> tuple[bool, str]:
-    if not config_path.exists():
-        return False, f"{short(config_path)}: file not found"
-    servers = _load_json(config_path).get("mcpServers", {})
+def _ext_check_mcp(config_str: str, server_key: str) -> tuple[bool, str]:
+    config = Path(config_str.replace("~", str(HOME)))
+    if not config.exists():
+        return False, f"{short(config)}: file not found"
+    servers = _load_json(config).get("mcpServers", {})
     return (
-        (True, f"registered in {short(config_path)}")
-        if any(server in k for k in servers)
-        else (False, f"'{server}' not in mcpServers in {short(config_path)}")
+        (True, f"registered in {short(config)}")
+        if any(server_key in k for k in servers)
+        else (False, f"'{server_key}' not in mcpServers in {short(config)}")
     )
 
 
-# Per-block activation: checks that the mechanism behind each block is wired,
-# not just that the fence is present. Blocks without harness-side mechanisms
-# (code-style, execution-guardrails, etc.) are omitted — fences suffice.
-BLOCK_ACTIVATION: dict[str, dict[str, tuple[bool, str]]] = {}
+def inspect_extensions(errors: list, warnings: list):
+    section("EXTENSIONS")
+    extensions = load_extensions()
 
+    if not extensions:
+        console.print("\n  [dim]no extensions defined[/dim]")
+        return
 
-def _build_activation_config() -> dict[str, dict[str, tuple[bool, str]]]:
-    return {
-        "rtk": {
-            "pi": _check_pi_package("pi-rtk-optimizer"),
-            "claude-code": _check_cc_hook("rtk"),
-            "copilot": (None, "deny-with-suggestion — no config to verify"),  # type: ignore[dict-item]
-        },
-        "context-mode": {
-            "pi": _check_pi_package("context-mode"),
-            "claude-code": _check_dir(HOME / ".claude/context-mode", "context-mode plugin"),
-            "copilot": _check_mcp(HOME / ".copilot/mcp-config.json", "context-mode"),
-        },
-    }
+    for ext in extensions:
+        name = ext["name"]
+        install = ext.get("install", "")
+        repo = ext.get("repo", "")
+        header = f"[bold cyan]{name}[/bold cyan]"
+        if install:
+            header += f"  [dim]install:[/dim] {install}"
+        if repo:
+            header += f"  [dim]{repo}[/dim]"
+        console.print(f"\n  {header}")
+
+        for harness, hconf in ext.get("harnesses", {}).items():
+            parts: list[str] = []
+
+            for pair in hconf.get("symlinks", []):
+                src = REPO / pair[0]
+                dst = Path(pair[1].replace("~", str(HOME)))
+                ok, msg = check_symlink(src, dst)
+                if ok:
+                    parts.append(s_ok(short(dst), f"→ {short(src)}"))
+                else:
+                    parts.append(s_err(f"{short(dst)}: {msg}"))
+                    errors.append(f"extension '{name}' ({harness}) symlink: {msg}")
+
+            if "verify_hook" in hconf:
+                ok, msg = _ext_check_hook(hconf["verify_hook"])
+                if ok:
+                    parts.append(s_ok(msg))
+                else:
+                    parts.append(s_err(msg))
+                    errors.append(f"extension '{name}' ({harness}): {msg}")
+
+            if "verify_dir" in hconf:
+                ok, msg = _ext_check_dir(hconf["verify_dir"])
+                if ok:
+                    parts.append(s_ok(msg))
+                else:
+                    parts.append(s_err(msg))
+                    errors.append(f"extension '{name}' ({harness}): {msg}")
+
+            if "verify_mcp" in hconf:
+                ok, msg = _ext_check_mcp(hconf["verify_mcp"], ext.get("block", name))
+                if ok:
+                    parts.append(s_ok(msg))
+                else:
+                    parts.append(s_err(msg))
+                    errors.append(f"extension '{name}' ({harness}): {msg}")
+
+            if not parts:
+                setup = hconf.get("manual_setup", "no verify configured")
+                parts.append(s_warn(setup))
+
+            harness_row(harness, "  ·  ".join(parts))
 
 
 # ── blocks ────────────────────────────────────────────────────────────────────
-
-
-def inspect_activation(errors: list, warnings: list):
-    section("BLOCK ACTIVATION")
-    activation = _build_activation_config()
-
-    for block_name, harness_checks in activation.items():
-        console.print(f"\n  [bold cyan]{block_name}[/bold cyan]")
-        for harness, result in harness_checks.items():
-            ok, detail = result
-            if ok is None:
-                harness_row(harness, s_warn(detail))
-            elif ok:
-                harness_row(harness, s_ok(detail))
-            else:
-                harness_row(harness, s_err(detail))
-                errors.append(f"activation '{block_name}' ({harness}): {detail}")
 
 
 def inspect_blocks(errors: list, warnings: list):
@@ -395,7 +421,7 @@ def main():
         style="bright_blue",
     )
 
-    inspect_activation(errors, warnings)
+    inspect_extensions(errors, warnings)
     inspect_blocks(errors, warnings)
     inspect_agents(errors, warnings)
     inspect_skills(errors, warnings)

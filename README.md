@@ -17,6 +17,7 @@ See `pattern.md` for the full design, decision record, and usage scenarios. Key 
 - **Blocks are universal or they are not blocks** — no per-harness block variants
 - **Agents are rendered** — frontmatter differs per harness; bodies do not
 - **Skills live in `shared/skills/`** — general-purpose skills are authored here; symlinks deploy them to all harnesses
+- **Extensions are declared, not installed** — globally installed tools are wired per-harness via manifests in `shared/extensions/`; installation is out of scope
 
 ---
 
@@ -42,14 +43,16 @@ shared/
   blocks/          # Atomic instruction blocks — edit here, propagates everywhere
   agents/          # Canonical agent bodies — frontmatter-free, harness-agnostic
   skills/          # General-purpose skill definitions (e.g., wiki-ops/SKILL.md)
+  extensions/      # Extension manifests — one TOML per globally installed tool
 harnesses/
   pi/              # Pi harness: AGENTS.md, settings.json, models.json, claude-bridge.json, agents/
   claude-code/     # Claude Code harness: CLAUDE.md, RTK.md, settings.json
-  copilot/         # Copilot CLI harness: copilot-instructions.md, agents/
+  copilot/         # Copilot CLI harness: copilot-instructions.md, hooks/, agents/
 tools/
   sync.py                  # Drift detection and block/agent propagation
   verify.py                # Congruence tests — exits non-zero on drift
   bootstrap.sh             # One-time (idempotent) symlink setup
+  wire_extensions.py       # Extension symlink wiring (called by bootstrap.sh)
   harness_agent_config.toml  # Per-harness agent frontmatter rules
 pattern.md         # Full design rationale and decision record
 ```
@@ -96,13 +99,40 @@ git add -A && git commit -m "..."
 
 ```bash
 # 1. write the skill (or locate it in its source repo)
-# 2. wire it into both harnesses
+# 2. wire it into pi and copilot
 tools/bootstrap.sh --skill <skill-name>
 
-# 3. add a shared block with the activation hint
+# 3. add @-include to harnesses/claude-code/CLAUDE.md pointing at SKILL.md
+
+# 4. add a shared block with the activation hint
 $EDITOR shared/blocks/<skill-name>.md
 # add <!-- block: <skill-name> --> fences to each harness instruction file
 python tools/sync.py --apply && python tools/verify.py
+git add -A && git commit -m "..."
+```
+
+### Wire a new extension
+
+Extensions are globally installed tools (via brew, npm, etc.) that need per-harness wiring.
+
+```bash
+# 1. install the extension globally on this machine (outside llm-config)
+
+# 2. write shared/extensions/<name>.toml — declare symlinks, verify checks, manual steps
+$EDITOR shared/extensions/<name>.toml
+
+# 3. add any harness-side config files the manifest references
+#    (e.g., harnesses/copilot/hooks/<name>.json for hook configs)
+
+# 4. write the shared block carrying the LLM-facing instruction content
+$EDITOR shared/blocks/<name>.md
+# add fences to each harness instruction file, then sync
+python tools/sync.py --apply
+
+# 5. run bootstrap to create extension symlinks
+bash tools/bootstrap.sh
+
+python tools/verify.py
 git add -A && git commit -m "..."
 ```
 
@@ -175,9 +205,8 @@ Then complete the checklist bootstrap prints:
 |------|------|----------------|
 | Ollama host | `harnesses/pi/models.json` | Update `baseUrl` from `http://loki.local:11434` to this machine's address |
 | Prompt path | `harnesses/pi/settings.json` | Update `prompts` absolute path — should be `~/repos/llm-config/harnesses/pi/agents` |
-| CC MCP | `~/.claude.json` | Register context-mode MCP server |
-| Copilot MCP | `~/.copilot/mcp-config.json` | Register context-mode MCP server |
 | Pi auth | `~/.pi/agent/auth.json` | Create with API keys (never committed) |
+| Extensions | (printed by bootstrap) | One-time per-harness setup for each extension (e.g., `rtk init -g`, plugin installs) |
 
 ---
 
@@ -208,6 +237,17 @@ To add a skill: write `shared/skills/<name>/SKILL.md`, add a `<!-- block: <name>
 To update a skill: edit `shared/skills/<name>/SKILL.md` directly — symlinks deploy the change instantly, no sync step needed.
 
 For domain-specific skills tightly coupled to a single project, the skill can live in that project's repo and be registered in `bootstrap.sh` as an external source. See `pattern.md` for the decision rule.
+
+## Extensions
+
+Extensions are globally installed tools (brew, npm) that need per-harness wiring. The installation itself is outside llm-config; the repo owns the wiring.
+
+| Extension | Install | Source |
+|-----------|---------|--------|
+| RTK | `brew install rtk` | `shared/extensions/rtk.toml` |
+| context-mode | `npm install -g context-mode` | `shared/extensions/context-mode.toml` |
+
+Each manifest declares: symlinks to create, mechanism checks to verify, and one-time setup commands to print in bootstrap's checklist. `report.py` reads manifests to verify extension wiring at any time.
 
 ## Verify congruence
 
@@ -268,7 +308,8 @@ The `rtk` block is the canonical example of a correctly shared block: RTK suppor
 | `~/.claude/CLAUDE.md` | `harnesses/claude-code/CLAUDE.md` |
 | `~/.claude/RTK.md` | `harnesses/claude-code/RTK.md` |
 | `~/.claude/settings.json` | `harnesses/claude-code/settings.json` |
-| `~/.github/copilot-instructions.md` | `harnesses/copilot/instructions.md` |
+| `~/.github/copilot-instructions.md` | `harnesses/copilot/copilot-instructions.md` |
+| `~/.github/hooks/rtk-rewrite.json` | `harnesses/copilot/hooks/rtk-rewrite.json` |
 | `~/.copilot/agents/` | `harnesses/copilot/agents/` |
 | `~/.copilot/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 

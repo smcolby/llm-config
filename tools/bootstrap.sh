@@ -37,7 +37,6 @@ remove_harness() {
 		;;
 	copilot)
 		unlink "$HOME_DIR/.github/copilot-instructions.md" 2>/dev/null || true
-		unlink "$HOME_DIR/.github/hooks/rtk-rewrite.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.copilot/skills/wiki-ops" 2>/dev/null || true
 		;;
 	*)
@@ -68,19 +67,6 @@ wire_skill() {
 	link "$skill_src" "$HOME_DIR/.pi/agent/skills/$skill"
 	link "$skill_src" "$HOME_DIR/.copilot/skills/$skill"
 	echo "  skill '$skill' wired for pi and copilot"
-}
-
-check_mcp() {
-	local harness="$1" config_path="$2"
-	if [ -f "$config_path" ]; then
-		if grep -q "context-mode" "$config_path" 2>/dev/null; then
-			echo "  ok   context-mode registered in $harness MCP config"
-		else
-			echo "  WARN context-mode NOT registered in $harness MCP config ($config_path)"
-		fi
-	else
-		echo "  WARN $harness MCP config not found ($config_path)"
-	fi
 }
 
 # ── argument handling ──────────────────────────────────────────────────────────
@@ -128,18 +114,16 @@ echo ""
 # ── copilot harness ───────────────────────────────────────────────────────────
 
 echo "Wiring copilot..."
-mkdir -p "$HOME_DIR/.github/hooks" "$HOME_DIR/.copilot/skills"
+mkdir -p "$HOME_DIR/.github" "$HOME_DIR/.copilot/skills"
 link "$REPO/harnesses/copilot/copilot-instructions.md" "$HOME_DIR/.github/copilot-instructions.md"
-link "$REPO/harnesses/copilot/hooks/rtk-rewrite.json" "$HOME_DIR/.github/hooks/rtk-rewrite.json"
 link "$REPO/harnesses/copilot/agents" "$HOME_DIR/.copilot/agents"
 wire_skill "wiki-ops" # no-op if already done for pi (idempotent)
 echo ""
 
-# ── MCP registration checks ───────────────────────────────────────────────────
+# ── extensions ────────────────────────────────────────────────────────────────
 
-echo "Checking MCP registrations..."
-check_mcp "claude-code" "$HOME_DIR/.claude.json"
-check_mcp "copilot" "$HOME_DIR/.copilot/mcp-config.json"
+echo "Wiring extensions..."
+python3 "$REPO/tools/wire_extensions.py"
 echo ""
 
 # ── manual steps checklist ────────────────────────────────────────────────────
@@ -147,8 +131,7 @@ echo ""
 echo "=== Manual steps required ==="
 echo "  1. Edit harnesses/pi/models.json — update Ollama baseUrl to this machine's address"
 echo "  2. Edit harnesses/pi/settings.json — update 'prompts' absolute path if needed"
-echo "  3. Register context-mode in ~/.claude.json (claude-code MCP)"
-echo "  4. Register context-mode in ~/.copilot/mcp-config.json (copilot MCP)"
-echo "  5. Create ~/.pi/agent/auth.json with API keys (never committed)"
+echo "  3. Create ~/.pi/agent/auth.json with API keys (never committed)"
+echo "  (Extension-specific one-time setup printed above)"
 echo ""
 echo "Run 'python tools/verify.py' to confirm congruence."

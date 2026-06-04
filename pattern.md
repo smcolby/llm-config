@@ -36,8 +36,10 @@ llm-config/
 │   │   └── <topic>.md
 │   ├── agents/                       # Canonical agent/persona bodies — no frontmatter
 │   │   └── <persona>.md
-│   └── skills/                       # General-purpose skills with no domain coupling
-│       └── <skill>/SKILL.md
+│   ├── skills/                       # General-purpose skills with no domain coupling
+│   │   └── <skill>/SKILL.md
+│   └── extensions/                   # Extension manifests — one TOML per globally installed tool
+│       └── <extension>.toml
 ├── harnesses/
 │   ├── <harness-a>/
 │   │   ├── <instruction-file>.md     # Composed: shared blocks + harness-specific sections
@@ -50,6 +52,7 @@ llm-config/
 │   ├── sync.py                       # Drift detection and block/agent propagation
 │   ├── verify.py                     # Congruence tests (exits non-zero on drift)
 │   ├── bootstrap.sh                  # One-time (idempotent) machine setup
+│   ├── wire_extensions.py            # Extension symlink wiring (called by bootstrap.sh)
 │   └── harness_agent_config.toml    # Per-harness agent frontmatter rules
 ├── .gitignore
 └── README.md
@@ -131,6 +134,47 @@ Skills are wired by adding `ln -sf` entries to `bootstrap.sh` — one per harnes
 | Claude Code | (no native skill dir) | `@`-include in `harnesses/claude-code/CLAUDE.md` pointing at `SKILL.md` |
 
 New skills follow the same pattern: if general-purpose, add `shared/skills/{name}/SKILL.md`; if domain-specific, place it in the domain repo. Then add symlink entries to `bootstrap.sh`, run it, and add the `@`-include to the Claude Code harness file.
+
+---
+
+## Extensions — wiring globally installed tools
+
+Skills and blocks handle LLM-authored content. Extensions are a different category: globally installed third-party tools (installed via brew, npm, etc.) that need per-harness configuration to activate. The installation itself is outside llm-config's scope; the repo owns the wiring only.
+
+Because each harness requires different wiring for the same extension (Claude Code may need a hook entry; Copilot may need a JSON config file symlinked; pi may need nothing beyond the global install), the wiring cannot be captured in a single shared block. Instead, each extension is declared in a TOML manifest in `shared/extensions/`.
+
+**Manifest schema:**
+
+```toml
+name = "MyTool"
+repo = "https://github.com/owner/mytool"
+install = "brew install mytool"   # for reference; not run by llm-config
+block = "mytool"                  # shared block carrying the LLM-facing instructions
+
+[harnesses.claude-code]
+verify_hook = "mytool hook claude"     # substring to find in PreToolUse hook commands
+manual_setup = "mytool init -g"        # one-time command, printed in bootstrap checklist
+
+[harnesses.copilot]
+symlinks = [["harnesses/copilot/hooks/mytool.json", "~/.github/hooks/mytool.json"]]
+manual_setup = "mytool init -g --copilot"
+
+[harnesses.pi]
+# omit entirely if the global install is sufficient with no additional wiring
+```
+
+Supported verify check types (one per harness, checked by `report.py`):
+- `verify_hook`: substring to find in a PreToolUse hook command in the Claude Code settings
+- `verify_dir`: directory path to check for existence (used for plugin installs)
+- `verify_mcp`: path to an MCP config file to check for server registration
+
+**`wire_extensions.py`** reads all manifests and:
+1. Creates any `symlinks` declared per harness (analogous to `bootstrap.sh`'s `link` function)
+2. Prints a `manual_setup` checklist for one-time steps that cannot be automated
+
+`bootstrap.sh` calls `wire_extensions.py` automatically. **Adding a new extension requires no changes to `bootstrap.sh` or `report.py`** — drop a TOML in `shared/extensions/` and both tools pick it up.
+
+The LLM-facing instruction content for each extension lives in the shared block named by `block`. The manifest handles only the mechanism (wiring); the block handles the content (what the LLM reads).
 
 ---
 
@@ -242,6 +286,8 @@ Harness-specific sections are always shown and never cause a non-zero exit — t
 | Agent frontmatter | Rendered by `sync.py` from `harness_agent_config.toml` | Schema differs per harness |
 | General-purpose skill | `shared/skills/<name>/SKILL.md` | No per-harness adaptation needed |
 | Domain-specific skill | External domain repo; symlinked by `bootstrap.sh` | Evolves with the domain it serves |
+| Extension wiring | `shared/extensions/<name>.toml` | Per-harness wiring for globally installed tools |
+| Extension instruction content | `shared/blocks/<name>.md` | Same as any other shared block |
 | Harness-specific config | `harnesses/<harness>/<config>.json` | Harness or machine specific; never synced |
 | Machine-specific values | Edited in-place after bootstrap, never committed | Must match this machine's runtime |
 | API keys / tokens | Gitignored paths only | Security |
@@ -331,8 +377,8 @@ Shared blocks, skills, and agent bodies are untouched. The remaining harnesses c
 3. Edit machine-specific values by hand (bootstrap prints a checklist):
    - `harnesses/pi/models.json` — update Ollama `baseUrl` to this machine's address
    - `harnesses/pi/settings.json` — update absolute `prompts` path if it differs
-   - Register context-mode in each harness's MCP config (`~/.claude.json`, `~/.copilot/mcp-config.json`, pi internals)
    - Copy `~/.pi/agent/auth.json` from backup or recreate with API keys (never committed)
+   - Complete the one-time extension setup steps printed by bootstrap (e.g., `rtk init -g`, plugin installs)
 4. Run `python tools/verify.py` — confirms no drift was introduced during setup.
 
 Machine-specific values are never committed and never synced. The repo is the config; the machine is the runtime. Bootstrap bridges the two.

@@ -12,5 +12,8 @@
       }
     ]
   },
-  "theme": "dark"
+  "theme": "dark",
+  "enabledPlugins": {
+    "context-mode@context-mode": true
+  }
 }
