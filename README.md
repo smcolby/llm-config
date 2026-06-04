@@ -2,7 +2,7 @@
 
 Single source of truth for AI harness configurations: **pi**, **Claude Code**, and **GitHub Copilot CLI**. Shared content is authored once and propagated to all harnesses via symlinks and a sync tool. A verify script tests congruence and can run as a pre-commit hook.
 
-> This repo will be renamed from `pi-config` to `llm-config` on GitHub. The local path `~/repos/pi-config` is unchanged until you choose to move it.
+AI coding assistants each read behavioral instructions from their own config files (`AGENTS.md`, `CLAUDE.md`, `instructions.md`). When you use more than one, the same rules — code style, safety guardrails, tool routing, agent personas — need to live in each of them. Edit one and you need to remember to update the others. They drift. This repo fixes that: shared rules live in one place, harness configs are derived from them, and a verification step makes drift visible rather than silent.
 
 ---
 
@@ -17,7 +17,7 @@ Harness instruction files (`AGENTS.md`, `CLAUDE.md`, `instructions.md`) contain 
 <!-- /block: code-style -->
 ```
 
-`tools/sync.py` keeps the fenced regions identical to their sources in `shared/blocks/`. Agent/persona files are rendered from `shared/agents/` with harness-appropriate frontmatter. All harness files are symlinked into their live locations by `tools/bootstrap.sh` — what's in the repo is what's deployed.
+`tools/sync.py` keeps the fenced regions identical to their sources in `shared/blocks/`. Rather than generating harness files wholesale from templates — which would overwrite harness-specific content on every sync — fencing lets sync touch only the shared regions while leaving each harness file otherwise intact and human-readable. Agent/persona files are rendered from `shared/agents/` with harness-appropriate frontmatter. All harness files are symlinked into their live locations by `tools/bootstrap.sh` — what's in the repo is what's deployed.
 
 ---
 
@@ -146,11 +146,11 @@ git add -A && git commit -m "chore: remove <harness> harness"
 #    Copilot CLI:  https://github.com/github/copilot-cli-for-beginners
 
 # 2. clone this repo and any external skill repos
-git clone git@github.com:smcolby/llm-config.git ~/repos/pi-config
+git clone git@github.com:smcolby/llm-config.git ~/repos/llm-config
 git clone git@github.com:smcolby/llm-wiki.git  ~/repos/llm-wiki
 
 # 3. wire everything
-bash ~/repos/pi-config/tools/bootstrap.sh   # symlinks everything, prints a manual-steps checklist
+bash ~/repos/llm-config/tools/bootstrap.sh   # symlinks everything, prints a manual-steps checklist
 ```
 
 Then complete the checklist bootstrap prints:
@@ -176,9 +176,6 @@ Then complete the checklist bootstrap prints:
 | `~/.claude.json` | MCP config may contain tokens |
 | `~/.copilot/mcp-config.json` | MCP config may contain tokens |
 | `harnesses/_deprecated/` | Archived harnesses — kept locally, gitignored |
-
----
-
 
 ---
 

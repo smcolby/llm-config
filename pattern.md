@@ -1,6 +1,16 @@
 # llm-config — Design Pattern
 
-A single source of truth for all AI harness configurations: pi, Claude Code, and GitHub Copilot CLI. Edit shared content once; it propagates everywhere. Tests verify congruence.
+This document describes the design of a single-repo system for managing AI harness configurations across multiple coding assistants. It covers the problems it solves, the principles behind the decisions, and the specific mechanisms used to implement them.
+
+---
+
+## Problem this solves
+
+AI coding assistants read behavioral instructions from harness-specific files: `AGENTS.md`, `CLAUDE.md`, `instructions.md`. When you work across multiple assistants, the same rules need to appear in each — code formatting conventions, safety guardrails, tool routing instructions, agent personas. Edit one harness and you need to remember to update the others. They drift. Sometimes intentionally (a rule that only makes sense for one harness); more often accidentally, as a silent accumulation.
+
+The naive fix — copy-paste shared content, update all copies manually — fails immediately: there's no authoritative version, no automated way to detect divergence, and no record of what changed where. The result is either a high-overhead maintenance burden or configs that gradually diverge until two assistants behave meaningfully differently for no intentional reason.
+
+This pattern solves it by keeping shared content in a single source and making all harness files derive from it, with a lightweight verification step that makes drift a visible, actionable state rather than a silent one.
 
 ---
 
@@ -17,53 +27,41 @@ A single source of truth for all AI harness configurations: pi, Claude Code, and
 
 ## Repository layout
 
+The structure below is the generic shape. Instance-specific file names (block topics, agent names, harness config filenames) are shown as placeholders.
+
 ```
 llm-config/
 ├── shared/
-│   ├── blocks/                       # Atomic instruction blocks (harness-agnostic prose)
-│   │   ├── code-style.md             # Comment/print formatting rules
-│   │   ├── execution-guardrails.md   # Safety rules (destructive ops, path checks, etc.)
-│   │   ├── rtk.md                    # RTK token-optimizer instructions
-│   │   ├── context-mode.md           # ctx_* tool routing rules
-│   │   └── llm-wiki.md               # wiki-ops skill activation and conventions
-│   ├── agents/                       # Canonical agent/persona bodies (no frontmatter)
-│   │   ├── chemoinformatician.md
-│   │   ├── coordinator.md
-│   │   ├── critic.md
-│   │   ├── executor.md
-│   │   ├── machine-learning-expert.md
-│   │   ├── planner.md
-│   │   └── tester.md
-│   └── skills/
-│       └── wiki-ops/                 # Canonical skill — symlinked into pi; inlined elsewhere
-│           └── SKILL.md
+│   ├── blocks/                       # Atomic instruction blocks — one file per universal topic
+│   │   └── <topic>.md
+│   ├── agents/                       # Canonical agent/persona bodies — no frontmatter
+│   │   └── <persona>.md
+│   └── skills/                       # General-purpose skills with no domain coupling
+│       └── <skill>/SKILL.md
 ├── harnesses/
-│   ├── pi/
-│   │   ├── AGENTS.md                 # Composed: shared blocks + pi-specific sections
-│   │   ├── settings.json             # Pi settings (machine-specific values documented)
-│   │   ├── models.json               # Pi model/provider config
-│   │   ├── claude-bridge.json        # pi-claude-bridge extension config
-│   │   └── agents/                   # Rendered pi prompt templates (from shared/agents/)
-│   │       └── *.md
-│   ├── claude-code/
-│   │   ├── CLAUDE.md                 # Composed: shared blocks + CC-specific sections
-│   │   ├── RTK.md                    # RTK block as standalone file (CC @-include target)
-│   │   └── settings.json             # Claude Code settings.json
-│   └── copilot/
-│       ├── instructions.md           # Global Copilot instructions (~/.github/copilot-instructions.md)
-│       └── agents/                   # Rendered Copilot agent files (from shared/agents/)
-│           └── *.agent.md
+│   ├── <harness-a>/
+│   │   ├── <instruction-file>.md     # Composed: shared blocks + harness-specific sections
+│   │   ├── <config>.json             # Harness-specific config (settings, models, etc.)
+│   │   └── agents/                   # Rendered agent files (from shared/agents/)
+│   │       └── <persona>.<suffix>.md
+│   └── <harness-b>/
+│       └── ...
 ├── tools/
-│   ├── sync.py                       # Drift detection and block propagation
-│   ├── verify.py                     # Congruence tests (CI-safe, exits non-zero on drift)
-│   └── bootstrap.sh                  # One-time machine setup: all symlinks
+│   ├── sync.py                       # Drift detection and block/agent propagation
+│   ├── verify.py                     # Congruence tests (exits non-zero on drift)
+│   ├── bootstrap.sh                  # One-time (idempotent) machine setup
+│   └── harness_agent_config.toml    # Per-harness agent frontmatter rules
 ├── .gitignore
 └── README.md
 ```
 
+The instance-specific layout (actual block names, agent names, harness config files) is documented in this repo's README.
+
 ---
 
 ## Shared blocks — composition mechanism
+
+The central challenge of keeping harness configs in sync is that each harness file is not *only* shared content — it also has harness-specific sections that should never be overwritten. Full template generation (render the whole file from a template) would erase those sections on every sync. Copying files wholesale has the same problem. Fencing solves it: each harness instruction file embeds shared blocks between HTML comment markers, and sync only touches what's between those markers.
 
 Each harness instruction file (`AGENTS.md`, `CLAUDE.md`, `instructions.md`) embeds shared blocks using HTML comment fences:
 
@@ -79,11 +77,13 @@ Each harness instruction file (`AGENTS.md`, `CLAUDE.md`, `instructions.md`) embe
 
 `verify.py` runs `--check` and exits non-zero if any harness block differs from its canonical source. It is the hook for CI and pre-commit.
 
-Blocks are harness-agnostic prose. If a block needs any harness-specific phrasing (e.g., "pi tool" vs "bash tool"), that phrasing lives outside the fence in the harness file, not in the shared block.
+Blocks are harness-agnostic prose. If a block needs any harness-specific phrasing (e.g., a tool name that differs per harness), that phrasing lives outside the fence in the harness file — not in the shared block.
 
 ---
 
 ## Shared agents — render mechanism
+
+Agent files cannot be symlinked wholesale because their frontmatter schemas differ per harness: Copilot CLI requires `name`, `model`, and `tools` fields while pi only uses `description`. If a single file were symlinked to both harnesses, it would either have the wrong fields for one of them or require a lowest-common-denominator format that satisfies neither. The solution is to store only the body (the actual behavioral content, which is harness-agnostic) in shared, and render harness-appropriate frontmatter on top of it.
 
 The `shared/agents/` directory contains the **body only** of each agent — plain markdown, no frontmatter. Frontmatter is harness-specific:
 
@@ -117,30 +117,37 @@ frontmatter_extra = ""
 
 ## Skills — symlink mechanism
 
-All three harnesses use the same `SKILL.md` convention and the same `name`/`description` frontmatter format — they differ only in the directory they load from. This means `shared/skills/wiki-ops/SKILL.md` can be symlinked directly into all three with no per-harness adaptation.
+Unlike instruction blocks (embedded fragments that need fencing) and agents (files with varying frontmatter), skill definitions are self-contained `SKILL.md` files with a uniform format across all harnesses. There is no per-harness adaptation needed, so the entire skill directory can be symlinked wholesale rather than rendered or fenced. Skills also tend to be longer and more complex than blocks, making embedding them inline impractical.
 
-| Harness | Skill directory | Mechanism |
-|---------|----------------|-----------|
-| pi | `~/.pi/agent/skills/wiki-ops/` | `bootstrap.sh` symlinks `shared/skills/wiki-ops/` |
-| Copilot CLI | `~/.copilot/skills/wiki-ops/` | `bootstrap.sh` symlinks `shared/skills/wiki-ops/` |
-| Claude Code | `~/.claude/` (no native skill dir) | Skill content referenced via `@`-include in `harnesses/claude-code/CLAUDE.md`: `@llm-config/shared/skills/wiki-ops/SKILL.md` |
+Skills come from one of two places:
+- **`shared/skills/<name>/`** — for general-purpose skills with no domain coupling
+- **An external domain repo** — for skills tightly coupled to a specific project or knowledge base (see [Relationship to external skill repos](#relationship-to-external-skill-repos))
 
-New skills follow the same pattern: add `shared/skills/{name}/SKILL.md`, then add symlink entries to `bootstrap.sh` for pi and Copilot, and an `@`-include line in the Claude Code CLAUDE.md.
+`bootstrap.sh --skill <name>` handles both cases: it checks the domain repo location first, falls back to `shared/skills/`, and creates symlinks into each harness's skill directory.
+
+| Harness | Live skill directory | Mechanism |
+|---------|---------------------|----------|
+| pi | `~/.pi/agent/skills/<name>/` | `bootstrap.sh` symlinks from the skill source |
+| Copilot CLI | `~/.copilot/skills/<name>/` | `bootstrap.sh` symlinks from the skill source |
+| Claude Code | (no native skill dir) | Referenced via `@`-include in `harnesses/claude-code/CLAUDE.md` pointing to the skill source |
+
+New skills follow the same pattern: if general-purpose, add `shared/skills/{name}/SKILL.md`; if domain-specific, place it in the domain repo and document the source in this repo's README. Then run `bootstrap.sh --skill {name}` and add an `@`-include to the Claude Code harness file.
 
 ---
 
 ## Symlink map (bootstrap.sh)
+
+Symlinks are what make the repo the live config: because harness files are symlinked into the locations each assistant reads from, committing a change IS deploying it. There is no separate deploy step, no copy to keep in sync with the repo, no risk of the live file and the committed file diverging. `git diff` always reflects what's actually running.
 
 `bootstrap.sh` establishes all symlinks on a fresh machine. The exact paths are instance-specific; the README of each repo using this pattern should contain its own full symlink map. The generic structure is:
 
 ```
 REPO=~/repos/llm-config
 
-# per harness: instruction file, harness-specific configs, skill dirs, agent dir
+# per harness: instruction file, harness-specific configs, skill dirs
 ~/.harness-a/instructions.md    → $REPO/harnesses/harness-a/instructions.md
 ~/.harness-a/config.json        → $REPO/harnesses/harness-a/config.json
-~/.harness-a/skills/my-skill/   → $REPO/shared/skills/my-skill/  (or external source)
-~/repos/agents/harness-a/       → $REPO/harnesses/harness-a/agents/
+~/.harness-a/skills/my-skill/   → skill source (shared/skills/ or external repo)
 ```
 
 `bootstrap.sh` is idempotent: existing correct symlinks are skipped, broken ones replaced.
@@ -153,7 +160,9 @@ REPO=~/repos/llm-config
 
 ## Congruence testing (verify.py)
 
-`verify.py` checks two things:
+Without a congruence check, drift is invisible. The natural workflow — refining instructions while actively working in a specific harness — means you regularly improve one harness's config directly. Without a tool to detect when those improvements diverge from the shared source, the divergence just accumulates silently. Two harnesses start behaving differently for no intentional reason, and you can't tell from the files themselves when the split happened or whether it was deliberate.
+
+`verify.py` makes drift a visible, actionable state rather than a silent one. It checks two things:
 
 1. **Block congruence:** every `<!-- block: name -->` fence in every harness file matches `shared/blocks/{name}.md` verbatim (after normalizing trailing whitespace).
 2. **Agent congruence:** the body of every rendered agent file in `harnesses/{harness}/agents/` matches `shared/agents/{name}.md` verbatim (excluding frontmatter lines).
@@ -201,17 +210,15 @@ Add `python tools/verify.py` to `.git/hooks/pre-commit` to catch drift before it
 
 | Content type | Lives in | Reason |
 |---|---|---|
-| Code style rules | `shared/blocks/code-style.md` | Identical across all harnesses |
-| RTK instructions | `shared/blocks/rtk.md` | Same tool, same behavior |
-| wiki-ops activation | `shared/blocks/llm-wiki.md` | Same workflow regardless of harness |
-| wiki-ops skill definition | `shared/skills/wiki-ops/SKILL.md` | Single canonical skill; consumed differently per harness |
-| Agent/persona body | `shared/agents/*.md` | Core behavior is harness-agnostic |
-| Agent frontmatter | Generated by `sync.py` from `harness_agent_config.toml` | Frontmatter schema differs per harness |
-| pi tool routing | `harnesses/pi/AGENTS.md` (outside fences) | pi-specific: context-mode, pi-lens, pi-subagents |
-| CC `@`-include syntax | `harnesses/claude-code/CLAUDE.md` (outside fences) | CC-native mechanism |
-| Ollama base URL | `harnesses/pi/models.json` | Machine-specific; never synced |
-| pi package list | `harnesses/pi/settings.json` | pi-specific extension ecosystem |
-| Copilot `tools` frontmatter | Generated via `harness_agent_config.toml` | Copilot-specific API |
+| Universal instruction (style, guardrails, tool routing) | `shared/blocks/<topic>.md` | Identical across all harnesses |
+| Harness-specific instruction | Harness instruction file, outside block fences | Only meaningful for that harness |
+| Agent/persona body | `shared/agents/<persona>.md` | Core behavior is harness-agnostic |
+| Agent frontmatter | Rendered by `sync.py` from `harness_agent_config.toml` | Schema differs per harness |
+| General-purpose skill | `shared/skills/<name>/SKILL.md` | No per-harness adaptation needed |
+| Domain-specific skill | External domain repo; symlinked by `bootstrap.sh` | Evolves with the domain it serves |
+| Harness-specific config | `harnesses/<harness>/<config>.json` | Harness or machine specific; never synced |
+| Machine-specific values | Edited in-place after bootstrap, never committed | Must match this machine's runtime |
+| API keys / tokens | Gitignored paths only | Security |
 
 ---
 
@@ -261,7 +268,7 @@ An agent can own steps 3–5 entirely: *"Wire up the wiki-ops skill across all h
    - `harnesses/pi/agents/scientist.md` (pi frontmatter: `description` only)
    - `harnesses/copilot/agents/scientist.agent.md` (Copilot frontmatter: `description`, `name`, `model`, `tools`)
 3. Run `python tools/verify.py` — confirms rendered bodies match the canonical source.
-4. Commit. Because `~/repos/agents/pi/` and `~/repos/agents/copilot-cli/` are symlinks into the harness agent dirs, the new agent is immediately accessible in both.
+4. Commit. The rendered files are in `harnesses/pi/agents/` and `harnesses/copilot/agents/`, which are referenced directly from each harness's config and immediately available.
 
 Claude Code has no native agent file format. The persona is available to CC via the pi bridge (`/agent scientist` in a pi session running CC as provider), or by referencing the shared body as a system prompt. If CC gains a native agent format, add it to `harness_agent_config.toml` and re-run sync.
 
@@ -329,14 +336,16 @@ There is no sync step because the skill directory is symlinked wholesale, not co
 
 ## Relationship to external skill repos
 
-Skills with their own source repos (project-specific tooling, domain knowledge bases) are not stored in `llm-config` itself. Instead:
+Skills tightly coupled to a specific project or knowledge domain live in that project's repo, not in `llm-config`. The skill evolves with the thing it knows about — a wiki restructure and its skill update can land in the same commit, in the right repo.
 
 - The canonical `SKILL.md` lives in the source repo (e.g. `~/repos/my-project/.skills/my-skill/`)
-- `shared/skills/` holds nothing — it is purely a bootstrap target directory
-- `bootstrap.sh` symlinks from the source repo into each harness's skill directory
-- Editing the skill in the source repo propagates to all harnesses automatically via symlinks
+- `bootstrap.sh --skill <name>` checks the domain repo location first, then falls back to `shared/skills/`
+- Symlinks from each harness's skill directory point back to the source repo
+- Editing the skill in the source repo propagates to all harnesses automatically via those symlinks
 
-**Decision rule (the karpathy principle):** a skill travels with the thing it knows about. If a skill is tightly coupled to a specific project or data domain, it stays in that project's repo. If it becomes general-purpose, it graduates to `shared/skills/` in `llm-config` directly. Each repo using this pattern documents its external skill sources in its README.
+**Decision rule:** a skill travels with the thing it knows about. If a skill is tightly coupled to a specific project or data domain, it stays in that project's repo. If it becomes general-purpose and useful regardless of domain context, it graduates to `shared/skills/` in `llm-config` directly.
+
+> **Open design question:** this rule works cleanly when the distinction is clear. When a skill like `wiki-ops` is domain-specific (it knows the wiki's file layout and log conventions) but also needs to be available across all harnesses managed by `llm-config`, the right home is less obvious. See the memory entry `llm-config-skills-location` for the full tradeoff.
 
 ---
 
