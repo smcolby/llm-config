@@ -29,6 +29,7 @@ remove_harness() {
 		unlink "$HOME_DIR/.pi/agent/models.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.pi/agent/mcp.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.pi/agent/claude-bridge.json" 2>/dev/null || true
+		unlink "$HOME_DIR/.pi/agent/extensions/rtk.ts" 2>/dev/null || true
 		unlink "$HOME_DIR/.pi/agent/skills/wiki-ops" 2>/dev/null || true
 		;;
 	claude-code)
