@@ -45,9 +45,9 @@ shared/
   skills/          # General-purpose skill definitions (e.g., wiki-ops/SKILL.md)
   extensions/      # Extension manifests — one TOML per globally installed tool
 harnesses/
-  pi/              # Pi harness: AGENTS.md, settings.json, models.json, claude-bridge.json, agents/
+  pi/              # Pi harness: AGENTS.md, settings.json, models.json, mcp.json, claude-bridge.json, extensions/, agents/
   claude-code/     # Claude Code harness: CLAUDE.md, RTK.md, settings.json
-  copilot/         # Copilot CLI harness: copilot-instructions.md, hooks/, agents/
+  copilot/         # Copilot CLI harness: copilot-instructions.md, mcp-config.json, hooks/, agents/
 tools/
   sync.py                  # Drift detection and block/agent propagation
   verify.py                # Congruence tests — exits non-zero on drift
@@ -178,7 +178,7 @@ git add -A && git commit -m "..."
 tools/bootstrap.sh --remove <harness>   # unlinks symlinks, archives harnesses/<harness>/
 # remove harness from tools/harness_agent_config.toml
 python tools/verify.py
-git add -A && git commit -m "chore: remove <harness> harness"
+git add -A && git commit -m "Remove <harness> harness"
 ```
 
 ### Fresh machine setup
@@ -206,7 +206,7 @@ Then complete the checklist bootstrap prints:
 | Ollama host | `harnesses/pi/models.json` | Update `baseUrl` from `http://loki.local:11434` to this machine's address |
 | Prompt path | `harnesses/pi/settings.json` | Update `prompts` absolute path — should be `~/repos/llm-config/harnesses/pi/agents` |
 | Pi auth | `~/.pi/agent/auth.json` | Create with API keys (never committed) |
-| Extensions | (printed by bootstrap) | One-time per-harness setup for each extension (e.g., `rtk init -g`, plugin installs) |
+| Extensions | (printed by bootstrap) | One-time per-harness setup for each extension (e.g., plugin installs) |
 
 ---
 
@@ -287,7 +287,7 @@ Prints every shared component and how it manifests per harness, verifies all sym
 ## Block authoring rules
 
 - A block must be **byte-for-byte identical in every harness** that includes it — this is the invariant `verify.py` enforces.
-- Harness-specific phrasing (e.g., tool name differences like `pi-rtk-optimizer` vs `environment-rtk-optimizer`) belongs in the **wrapper lines outside the fence**, not inside the block.
+- Harness-specific phrasing (e.g., section heading differences like `RTK (TypeScript extension)` vs `RTK (environment-rtk-optimizer)`) belongs in the **wrapper lines outside the fence**, not inside the block.
 - If a block needs genuinely different rules per harness, it is not one block — split it and give each a distinct name.
 - Blocks are plain markdown prose. No templating, no variables, no conditionals.
 
@@ -309,9 +309,11 @@ The `rtk` block is the canonical example of a correctly shared block: RTK suppor
 | `~/.claude/settings.json` | `harnesses/claude-code/settings.json` |
 | `~/.github/copilot-instructions.md` | `harnesses/copilot/copilot-instructions.md` |
 | `~/.github/hooks/rtk-rewrite.json` | `harnesses/copilot/hooks/rtk-rewrite.json` |
+| `~/.github/hooks/context-mode.json` | `harnesses/copilot/hooks/context-mode.json` |
 | `~/.copilot/mcp-config.json` | `harnesses/copilot/mcp-config.json` |
 | `~/.copilot/agents/` | `harnesses/copilot/agents/` |
 | `~/.pi/agent/mcp.json` | `harnesses/pi/mcp.json` |
+| `~/.pi/agent/extensions/rtk.ts` | `harnesses/pi/extensions/rtk.ts` |
 | `~/.copilot/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 
 

@@ -46,7 +46,7 @@
 - `edit` requires `oldText` to match the file exactly and uniquely. Keep `oldText` as short as possible while still being unique — do not pad with surrounding unchanged lines.
 <!-- /block: execution-guardrails -->
 
-## RTK (pi-rtk-optimizer)
+## RTK (TypeScript extension)
 <!-- block: rtk -->
 - RTK automatically rewrites bash commands to their `rtk` equivalents and compacts tool output (git, build, test, grep, search results). Use commands normally — do not prefix with `rtk`.
 - Truncated logs, missing boilerplate passes, and abbreviated file listings are intentional optimizations. Trust compressed outputs as mathematically accurate and complete representations of system state. Do not re-run tool commands or loop variations simply because an output appears brief.

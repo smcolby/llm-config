@@ -195,7 +195,7 @@ REPO=~/repos/llm-config
 
 `bootstrap.sh` is idempotent: existing correct symlinks are skipped, broken ones replaced.
 
-**MCP registration is not symlinked.** Each harness has its own MCP config format and location. `bootstrap.sh` checks for required MCP registrations and prints warnings for any that are missing, but does not write MCP configs automatically — they may contain tokens or other machine-specific state that should never be committed.
+**MCP configs are committed and symlinked** for harnesses whose configs are token-free (e.g. pi and Copilot). `bootstrap.sh` symlinks them like any other harness file. The one exception is `~/.claude.json`, which Claude Code manages itself and may contain tokens — it is gitignored and never committed.
 
 **Machine-specific values** (server addresses, absolute paths) must be edited by hand after bootstrap. They are not templated — templating them would require a separate rendering step and break the "symlinked files are live files" principle. `bootstrap.sh` prints a checklist of required manual steps.
 
@@ -335,7 +335,7 @@ An agent can own steps 3–5 entirely: *"Wire up the wiki-ops skill across all h
 
 ### Adding a new prompt template / persona (e.g., a new "scientist" agent)
 
-1. Write `shared/agents/scientist.md` — body only, no frontmatter. First line: `description: Domain scientist specializing in ...`
+1. Write `shared/agents/scientist.md` with YAML frontmatter (`name` and `description` fields). The body follows — harness-agnostic prose, no harness-specific frontmatter.
 2. Run `python tools/sync.py --agents --apply` — renders:
    - `harnesses/pi/agents/scientist.md` (pi frontmatter: `description` only)
    - `harnesses/copilot/agents/scientist.agent.md` (Copilot frontmatter: `description`, `name`, `model`, `tools`)
@@ -373,17 +373,17 @@ Shared blocks, skills, and agent bodies are untouched. The remaining harnesses c
 `bootstrap.sh` is idempotent — safe to re-run. The sequence on a new machine:
 
 1. Clone the repo: `git clone ... ~/repos/llm-config`
-2. Run `./tools/bootstrap.sh` — creates all symlinks, checks MCP registrations, reports what needs manual attention.
+2. Run `./tools/bootstrap.sh` — creates all symlinks, wires extension symlinks, reports what needs manual attention.
 3. Edit machine-specific values by hand (bootstrap prints a checklist):
    - `harnesses/pi/models.json` — update Ollama `baseUrl` to this machine's address
    - `harnesses/pi/settings.json` — update absolute `prompts` path if it differs
    - Copy `~/.pi/agent/auth.json` from backup or recreate with API keys (never committed)
-   - Complete the one-time extension setup steps printed by bootstrap (e.g., `rtk init -g`, plugin installs)
+   - Complete the one-time extension setup steps printed by bootstrap (e.g., plugin installs)
 4. Run `python tools/verify.py` — confirms no drift was introduced during setup.
 
 Machine-specific values are never committed and never synced. The repo is the config; the machine is the runtime. Bootstrap bridges the two.
 
-**Files changed:** machine-local only (MCP configs, auth.json, machine-specific JSON values)
+**Files changed:** machine-local only (auth.json, machine-specific JSON values)
 **Commands:** `bootstrap.sh` → `verify.py`
 **Committed changes:** none
 
@@ -454,7 +454,7 @@ For someone implementing this pattern from scratch, or restoring to a completely
    ```bash
    mkdir ~/repos/llm-config && cd ~/repos/llm-config
    git init
-   mkdir -p shared/blocks shared/agents shared/skills
+   mkdir -p shared/blocks shared/agents shared/skills shared/extensions
    mkdir -p harnesses/harness-a harnesses/harness-b
    mkdir -p tools
    ```
@@ -484,7 +484,7 @@ For someone implementing this pattern from scratch, or restoring to a completely
    git add -A && git commit -m "init: llm-config"
    ```
 
-9. **Complete manual steps** — MCP registrations, API keys, machine-specific config values. `bootstrap.sh` should print a checklist.
+9. **Complete manual steps** — extension one-time setup, API keys, machine-specific config values. `bootstrap.sh` should print a checklist.
 
 ---
 
