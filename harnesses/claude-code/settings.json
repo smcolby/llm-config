@@ -12,6 +12,7 @@
       }
     ]
   },
+  "autoMemoryEnabled": false,
   "theme": "dark",
   "enabledPlugins": {
     "context-mode@context-mode": true
