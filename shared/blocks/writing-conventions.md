@@ -1,0 +1,2 @@
+- Minimize use of em-dashes.
+- Never use the "it's not X, it's Y" rhetorical pattern.

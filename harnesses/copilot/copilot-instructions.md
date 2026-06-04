@@ -8,6 +8,12 @@
 - Do not end comments with a period.
 <!-- /block: code-style -->
 
+## Writing Conventions
+<!-- block: writing-conventions -->
+- Minimize use of em-dashes.
+- Never use the "it's not X, it's Y" rhetorical pattern.
+<!-- /block: writing-conventions -->
+
 ## Git Conventions
 <!-- block: git-conventions -->
 # TODO: populate git commit message conventions
