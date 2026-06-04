@@ -22,6 +22,7 @@ SYNC = REPO / "tools/sync.py"
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--harness", help="limit to one harness")
     parser.add_argument("--agents", action="store_true")

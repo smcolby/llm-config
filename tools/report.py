@@ -135,16 +135,12 @@ def inspect_blocks(errors: list, warnings: list):
                 errors.append(f"block '{name}': {harness} instruction file not found")
                 continue
 
-            has_fence = bool(
-                re.search(rf"<!-- block: {re.escape(name)} -->", instr.read_text())
-            )
+            has_fence = bool(re.search(rf"<!-- block: {re.escape(name)} -->", instr.read_text()))
             live = HARNESS_LIVE_INSTR[harness]
             sym_ok, sym_msg = check_symlink(instr, live)
 
             fence_s = (
-                s_ok("fence")
-                if has_fence
-                else s_warn("no fence", "not included in this harness")
+                s_ok("fence") if has_fence else s_warn("no fence", "not included in this harness")
             )
             if not has_fence:
                 warnings.append(f"block '{name}': not included in {harness}")
@@ -170,17 +166,13 @@ def inspect_agents(errors: list, warnings: list):
         console.print(f"\n  [bold cyan]{name}[/bold cyan]")
 
         for harness, hconf in config["harnesses"].items():
-            rendered = (
-                HARNESSES_DIR / harness / "agents" / f"{name}{hconf['filename_suffix']}"
-            )
+            rendered = HARNESSES_DIR / harness / "agents" / f"{name}{hconf['filename_suffix']}"
             if rendered.exists():
                 harness_row(harness, s_ok(short(rendered)))
             else:
                 harness_row(
                     harness,
-                    s_err(
-                        f"{short(rendered)}  [dim](run sync.py --agents --apply)[/dim]"
-                    ),
+                    s_err(f"{short(rendered)}  [dim](run sync.py --agents --apply)[/dim]"),
                 )
                 errors.append(f"agent '{name}': rendered file missing in {harness}")
 

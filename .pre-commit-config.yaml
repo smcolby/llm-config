@@ -10,6 +10,7 @@ repos:
     rev: v1.1.410
     hooks:
       - id: pyright
+        additional_dependencies: [rich, pyyaml]
 
   - repo: local
     hooks:

@@ -79,8 +79,9 @@ def parse_shared_agent(path: Path):
         print(f"  ERROR: no frontmatter in {path}", file=sys.stderr)
         sys.exit(1)
     import yaml
+
     fm = yaml.safe_load(m.group(1))
-    body = text[m.end():].lstrip("\n")
+    body = text[m.end() :].lstrip("\n")
     return fm, body
 
 
@@ -119,7 +120,7 @@ def check_agents(apply: bool, harness_filter: str | None = None) -> int:
                 existing = out_path.read_text()
                 # extract body (skip frontmatter)
                 bm = FM_RE.match(existing)
-                existing_body = existing[bm.end():].lstrip("\n") if bm else existing
+                existing_body = existing[bm.end() :].lstrip("\n") if bm else existing
                 if existing_body.rstrip("\n") != canonical_body.rstrip("\n"):
                     drift += 1
                     print(f"  DRIFT  {harness}/agents/{out_path.name}: body differs from shared")
@@ -164,8 +165,10 @@ def main():
             print("  • Change was accidental or you want shared to win:")
             print("      Run --apply to overwrite the harness block with shared.")
             print()
-            print("⚠ --apply always overwrites harness blocks with shared."
-                  " Promote first or lose the change.")
+            print(
+                "⚠ --apply always overwrites harness blocks with shared."
+                " Promote first or lose the change."
+            )
             sys.exit(1)
 
 
