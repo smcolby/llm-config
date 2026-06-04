@@ -16,7 +16,7 @@ See `pattern.md` for the full design, decision record, and usage scenarios. Key 
 - **Symlinks, not copies** — what's committed is what's deployed
 - **Blocks are universal or they are not blocks** — no per-harness block variants
 - **Agents are rendered** — frontmatter differs per harness; bodies do not
-- **Skills travel with their domain** — wiki-ops stays in `llm-wiki`; this repo holds the wiring
+- **Skills live in `shared/skills/`** — general-purpose skills are authored here; symlinks deploy them to all harnesses
 
 ---
 
@@ -41,7 +41,7 @@ Harness instruction files (`AGENTS.md`, `CLAUDE.md`, `copilot-instructions.md`) 
 shared/
   blocks/          # Atomic instruction blocks — edit here, propagates everywhere
   agents/          # Canonical agent bodies — frontmatter-free, harness-agnostic
-  skills/          # Skill symlink targets (wiki-ops points to ~/repos/llm-wiki)
+  skills/          # General-purpose skill definitions (e.g., wiki-ops/SKILL.md)
 harnesses/
   pi/              # Pi harness: AGENTS.md, settings.json, models.json, claude-bridge.json, agents/
   claude-code/     # Claude Code harness: CLAUDE.md, RTK.md, settings.json
@@ -161,7 +161,6 @@ git add -A && git commit -m "chore: remove <harness> harness"
 
 # 2. clone this repo and any external skill repos
 git clone git@github.com:smcolby/llm-config.git ~/repos/llm-config
-git clone git@github.com:smcolby/llm-wiki.git  ~/repos/llm-wiki
 
 # 3. wire everything
 bash ~/repos/llm-config/tools/bootstrap.sh   # symlinks everything, prints a manual-steps checklist
@@ -196,17 +195,19 @@ Then complete the checklist bootstrap prints:
 
 ---
 
-## External skill repos
+## Skills
 
-Skills tightly coupled to a specific project or knowledge domain live in that project's repo, not here. This repo wires them into all harnesses via symlinks.
+General-purpose skills live in `shared/skills/<name>/SKILL.md` and are symlinked into each harness by `bootstrap.sh`.
 
 | Skill | Source | Wired to |
 |-------|--------|----------|
-| `wiki-ops` | `~/repos/llm-wiki/.pi/skills/wiki-ops/` | `~/.pi/agent/skills/wiki-ops/`, `~/.copilot/skills/wiki-ops/` |
+| `wiki-ops` | `shared/skills/wiki-ops/` | `~/.pi/agent/skills/wiki-ops/`, `~/.copilot/skills/wiki-ops/` |
 
-To add a new external skill: `bash tools/bootstrap.sh --skill <name>` (skill source must exist first).
+To add a skill: write `shared/skills/<name>/SKILL.md`, add a `<!-- block: <name> -->` activation hint in `shared/blocks/`, run `bootstrap.sh --skill <name>` and `sync.py --apply`.
 
-To update a skill: edit in the source repo — symlinks propagate changes instantly, no sync step needed.
+To update a skill: edit `shared/skills/<name>/SKILL.md` directly — symlinks deploy the change instantly, no sync step needed.
+
+For domain-specific skills tightly coupled to a single project, the skill can live in that project's repo and be registered in `bootstrap.sh` as an external source. See `pattern.md` for the decision rule.
 
 ## Verify congruence
 
@@ -263,12 +264,12 @@ The `rtk` block is the canonical example of a correctly shared block: RTK suppor
 | `~/.pi/agent/settings.json` | `harnesses/pi/settings.json` |
 | `~/.pi/agent/models.json` | `harnesses/pi/models.json` |
 | `~/.pi/agent/claude-bridge.json` | `harnesses/pi/claude-bridge.json` |
-| `~/.pi/agent/skills/wiki-ops/` | `~/repos/llm-wiki/.pi/skills/wiki-ops/` |
+| `~/.pi/agent/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 | `~/.claude/CLAUDE.md` | `harnesses/claude-code/CLAUDE.md` |
 | `~/.claude/RTK.md` | `harnesses/claude-code/RTK.md` |
 | `~/.claude/settings.json` | `harnesses/claude-code/settings.json` |
 | `~/.github/copilot-instructions.md` | `harnesses/copilot/instructions.md` |
 | `~/.copilot/agents/` | `harnesses/copilot/agents/` |
-| `~/.copilot/skills/wiki-ops/` | `~/repos/llm-wiki/.pi/skills/wiki-ops/` |
+| `~/.copilot/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 
 
