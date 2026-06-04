@@ -152,9 +152,19 @@ def main():
     if drift == 0:
         print("OK — all harnesses in sync")
     else:
-        verb = "fixed" if args.apply else "found"
-        print(f"\n{drift} issue(s) {verb}. Run with --apply to fix." if not args.apply else f"\n{drift} issue(s) fixed.")
-        if not args.apply:
+        if args.apply:
+            print(f"\n{drift} issue(s) fixed.")
+        else:
+            print(f"\n{drift} issue(s) found.")
+            print()
+            print("Before running --apply, decide for each drifted block:")
+            print("  • Change was intentional (e.g. you refined a harness directly):")
+            print("      Copy the updated content into shared/blocks/<name>.md first,")
+            print("      then run --apply to propagate it to ALL harnesses.")
+            print("  • Change was accidental or you want shared to win:")
+            print("      Run --apply to overwrite the harness block with shared.")
+            print()
+            print("⚠ --apply always overwrites harness blocks with shared. Promote first or lose the change.")
             sys.exit(1)
 
 

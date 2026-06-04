@@ -92,6 +92,42 @@ python tools/sync.py --apply && python tools/verify.py
 git add -A && git commit -m "..."
 ```
 
+
+### Reconcile drift (harness got ahead of shared)
+
+Run after spending significant time in one harness and refining its instructions directly.
+
+```bash
+python tools/verify.py   # shows which blocks drifted and in which harness
+```
+
+For each drifted block, decide:
+
+**The change should be universal — promote it:**
+```bash
+# copy the improved content into the canonical source
+$EDITOR shared/blocks/<name>.md
+
+# propagate to all harnesses (including the one you already edited)
+python tools/sync.py --apply
+python tools/verify.py
+git add -A && git commit -m "..."
+```
+
+**The change is harness-specific — keep it outside the fence:**
+```bash
+# open the harness file and move the changed content to a line outside the fence
+# (above or below the <!-- block --> markers)
+$EDITOR harnesses/<harness>/AGENTS.md  # or CLAUDE.md / instructions.md
+
+# restore the fence content from shared
+python tools/sync.py --apply
+python tools/verify.py
+git add -A && git commit -m "..."
+```
+
+⚠ Running `--apply` without promoting first will silently overwrite the harness change with shared.
+
 ### Drop a harness
 
 ```bash
@@ -104,11 +140,17 @@ git add -A && git commit -m "chore: remove <harness> harness"
 ### Fresh machine setup
 
 ```bash
-# prerequisites: clone this repo and any skill source repos (e.g. llm-wiki)
-git clone git@github.com:smcolby/llm-config.git ~/repos/pi-config
-git clone git@github.com:smcolby/llm-wiki.git    ~/repos/llm-wiki
+# 1. install harnesses — Claude Code, pi, and Copilot CLI must exist before bootstrap
+#    Claude Code:  https://claude.ai/download (installs ~/.claude/)
+#    pi:           https://pi.ai/download      (installs ~/.pi/)
+#    Copilot CLI:  https://github.com/github/copilot-cli-for-beginners
 
-bash tools/bootstrap.sh   # symlinks everything, prints a manual-steps checklist
+# 2. clone this repo and any external skill repos
+git clone git@github.com:smcolby/pi-config.git ~/repos/pi-config
+git clone git@github.com:smcolby/llm-wiki.git  ~/repos/llm-wiki
+
+# 3. wire everything
+bash ~/repos/pi-config/tools/bootstrap.sh   # symlinks everything, prints a manual-steps checklist
 ```
 
 Then complete the checklist bootstrap prints:
@@ -136,6 +178,21 @@ Then complete the checklist bootstrap prints:
 | `harnesses/_deprecated/` | Archived harnesses — kept locally, gitignored |
 
 ---
+
+
+---
+
+## External skill repos
+
+Skills tightly coupled to a specific project or knowledge domain live in that project's repo, not here. This repo wires them into all harnesses via symlinks.
+
+| Skill | Source | Wired to |
+|-------|--------|----------|
+| `wiki-ops` | `~/repos/llm-wiki/.pi/skills/wiki-ops/` | `~/.pi/agent/skills/wiki-ops/`, `~/.copilot/skills/wiki-ops/` |
+
+To add a new external skill: `bash tools/bootstrap.sh --skill <name>` (skill source must exist first).
+
+To update a skill: edit in the source repo — symlinks propagate changes instantly, no sync step needed.
 
 ## Verify congruence
 

@@ -131,35 +131,23 @@ New skills follow the same pattern: add `shared/skills/{name}/SKILL.md`, then ad
 
 ## Symlink map (bootstrap.sh)
 
-`bootstrap.sh` establishes all symlinks on a fresh machine. Run it once after cloning.
+`bootstrap.sh` establishes all symlinks on a fresh machine. The exact paths are instance-specific; the README of each repo using this pattern should contain its own full symlink map. The generic structure is:
 
 ```
-REPO=~/repos/llm-config   # rename from pi-config after GitHub rename
+REPO=~/repos/llm-config
 
-# pi harness
-~/.pi/agent/AGENTS.md            → $REPO/harnesses/pi/AGENTS.md
-~/.pi/agent/settings.json        → $REPO/harnesses/pi/settings.json
-~/.pi/agent/models.json          → $REPO/harnesses/pi/models.json
-~/.pi/agent/claude-bridge.json   → $REPO/harnesses/pi/claude-bridge.json
-~/.pi/agent/skills/wiki-ops/     → $REPO/shared/skills/wiki-ops/
-
-# pi agents: keep existing external path, point it at rendered harness dir
-~/repos/agents/pi/               → $REPO/harnesses/pi/agents/
-
-# claude code harness
-~/.claude/CLAUDE.md              → $REPO/harnesses/claude-code/CLAUDE.md
-~/.claude/RTK.md                 → $REPO/harnesses/claude-code/RTK.md
-~/.claude/settings.json          → $REPO/harnesses/claude-code/settings.json
-
-# copilot harness
-~/.github/copilot-instructions.md  → $REPO/harnesses/copilot/instructions.md
-~/.copilot/skills/wiki-ops/        → $REPO/shared/skills/wiki-ops/
-~/repos/agents/copilot-cli/        → $REPO/harnesses/copilot/agents/
+# per harness: instruction file, harness-specific configs, skill dirs, agent dir
+~/.harness-a/instructions.md    → $REPO/harnesses/harness-a/instructions.md
+~/.harness-a/config.json        → $REPO/harnesses/harness-a/config.json
+~/.harness-a/skills/my-skill/   → $REPO/shared/skills/my-skill/  (or external source)
+~/repos/agents/harness-a/       → $REPO/harnesses/harness-a/agents/
 ```
 
-**MCP registration is not symlinked** — each harness has its own MCP config file format and location (`~/.pi/` internals, `~/.claude.json`, `~/.copilot/mcp-config.json`). Context-mode must be registered in each separately. `bootstrap.sh` checks for the presence of each registration and prints a warning if missing, but does not write MCP configs automatically (they may contain tokens or other machine-specific state).
+`bootstrap.sh` is idempotent: existing correct symlinks are skipped, broken ones replaced.
 
-Machine-specific values (Ollama `baseUrl`, `prompts` absolute paths) are documented in `README.md` and must be edited by hand after bootstrap. They are not templated — templating them would require a separate rendering step and break the "symlinked files are live files" principle.
+**MCP registration is not symlinked.** Each harness has its own MCP config format and location. `bootstrap.sh` checks for required MCP registrations and prints warnings for any that are missing, but does not write MCP configs automatically — they may contain tokens or other machine-specific state that should never be committed.
+
+**Machine-specific values** (server addresses, absolute paths) must be edited by hand after bootstrap. They are not templated — templating them would require a separate rendering step and break the "symlinked files are live files" principle. `bootstrap.sh` prints a checklist of required manual steps.
 
 ---
 
@@ -339,11 +327,80 @@ There is no sync step because the skill directory is symlinked wholesale, not co
 
 ---
 
-## Relationship to llm-wiki
+## Relationship to external skill repos
 
-The `~/repos/llm-wiki/` repo holds a project-specific skill (`wiki-ops`) following the same pattern: canonical skill lives in the project, symlinked globally. The `shared/skills/wiki-ops/` directory in this repo replaces the llm-wiki copy as the global canonical source. `bootstrap.sh` symlinks it in place of the current `llm-wiki`-sourced symlink.
+Skills with their own source repos (project-specific tooling, domain knowledge bases) are not stored in `llm-config` itself. Instead:
 
-This maintains the karpathy-style principle: the skill travels with the thing it knows about. If wiki-ops evolves to be more generic (not llm-wiki-specific), it graduates to `llm-config`. If it stays tightly coupled to wiki conventions, it stays in `llm-wiki` and is referenced from here.
+- The canonical `SKILL.md` lives in the source repo (e.g. `~/repos/my-project/.skills/my-skill/`)
+- `shared/skills/` holds nothing — it is purely a bootstrap target directory
+- `bootstrap.sh` symlinks from the source repo into each harness's skill directory
+- Editing the skill in the source repo propagates to all harnesses automatically via symlinks
+
+**Decision rule (the karpathy principle):** a skill travels with the thing it knows about. If a skill is tightly coupled to a specific project or data domain, it stays in that project's repo. If it becomes general-purpose, it graduates to `shared/skills/` in `llm-config` directly. Each repo using this pattern documents its external skill sources in its README.
+
+---
+
+### Promoting a harness-side change to shared (reconciling drift)
+
+This is the scenario where you spend significant time in one harness, improve its instructions directly, then want those improvements to become universal.
+
+`verify.py` (or `sync.py`) will report drift — the harness block differs from `shared/blocks/<name>.md`. Before running `--apply`, decide:
+
+**If the change should be universal:**
+1. Open `shared/blocks/<name>.md` and apply the same change there.
+2. Run `python tools/sync.py --apply` — propagates the updated block to ALL harnesses (including the one you already edited, which will be a no-op since they now match).
+3. Run `python tools/verify.py` — confirm clean.
+4. Commit shared source + all harness files together.
+
+**If the change is harness-specific:**
+1. Open the harness instruction file and move the changed content to a line *outside* the fence (above or below the `<!-- block -->` markers).
+2. Run `python tools/sync.py --apply` — restores the fence content from shared (your harness-specific addition stays, untouched, outside the fence).
+3. Commit.
+
+⚠ Never run `--apply` when drift is intentional without promoting first. `--apply` always overwrites harness blocks with shared; the harness change will be lost.
+
+**Summary:**
+- Drift detected → inspect before applying
+- Universal change → promote to shared first, then sync
+- Harness-specific change → move outside fence, then sync
+
+---
+
+### Bootstrapping from zero (no repo, no harness configs)
+
+For someone implementing this pattern from scratch, or restoring to a completely clean machine with nothing installed:
+
+1. **Install harnesses** — install each AI coding assistant you plan to use. Harnesses must exist before bootstrap can wire symlinks into them.
+
+2. **Initialize the repo:**
+   ```bash
+   mkdir ~/repos/llm-config && cd ~/repos/llm-config
+   git init
+   mkdir -p shared/blocks shared/agents shared/skills
+   mkdir -p harnesses/harness-a harnesses/harness-b
+   mkdir -p tools
+   ```
+
+3. **Write shared blocks** — create `shared/blocks/*.md` files, one per universal instruction topic (code style, guardrails, tool routing, etc.). These are plain prose — no fencing required in the canonical files.
+
+4. **Create harness instruction files** — for each harness, create its instruction file (e.g. `harnesses/harness-a/instructions.md`) containing the harness-specific wrapper text plus `<!-- block: name -->` fences wherever shared blocks should appear. Leave the fences empty for now.
+
+5. **Run initial sync:**
+   ```bash
+   python tools/sync.py --apply   # populates all block fences from shared/blocks/
+   python tools/verify.py         # should pass clean
+   ```
+
+6. **Write bootstrap.sh** — using the symlink map structure documented in this pattern, wire `harnesses/*/` files into their live harness locations. Make it idempotent (`ln -sf`).
+
+7. **Run bootstrap and verify:**
+   ```bash
+   bash tools/bootstrap.sh
+   python tools/verify.py
+   git add -A && git commit -m "init: llm-config"
+   ```
+
+8. **Complete manual steps** — MCP registrations, API keys, machine-specific config values. `bootstrap.sh` should print a checklist.
 
 ---
 
