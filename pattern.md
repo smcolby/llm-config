@@ -6,7 +6,7 @@ This document describes the design of a single-repo system for managing AI harne
 
 ## Problem this solves
 
-AI coding assistants read behavioral instructions from harness-specific files: `AGENTS.md`, `CLAUDE.md`, `instructions.md`. When you work across multiple assistants, the same rules need to appear in each — code formatting conventions, safety guardrails, tool routing instructions, agent personas. Edit one harness and you need to remember to update the others. They drift. Sometimes intentionally (a rule that only makes sense for one harness); more often accidentally, as a silent accumulation.
+AI coding assistants read behavioral instructions from harness-specific files: `AGENTS.md` (pi), `CLAUDE.md` (Claude Code, Anthropic), `copilot-instructions.md` (GitHub Copilot CLI, GitHub/Microsoft). When you work across multiple assistants, the same rules need to appear in each — code formatting conventions, safety guardrails, tool routing instructions, agent personas. Edit one harness and you need to remember to update the others. They drift. Sometimes intentionally (a rule that only makes sense for one harness); more often accidentally, as a silent accumulation.
 
 The naive fix — copy-paste shared content, update all copies manually — fails immediately: there's no authoritative version, no automated way to detect divergence, and no record of what changed where. The result is either a high-overhead maintenance burden or configs that gradually diverge until two assistants behave meaningfully differently for no intentional reason.
 
@@ -63,7 +63,7 @@ The instance-specific layout (actual block names, agent names, harness config fi
 
 The central challenge of keeping harness configs in sync is that each harness file is not *only* shared content — it also has harness-specific sections that should never be overwritten. Full template generation (render the whole file from a template) would erase those sections on every sync. Copying files wholesale has the same problem. Fencing solves it: each harness instruction file embeds shared blocks between HTML comment markers, and sync only touches what's between those markers.
 
-Each harness instruction file (`AGENTS.md`, `CLAUDE.md`, `instructions.md`) embeds shared blocks using HTML comment fences:
+Each harness instruction file (`AGENTS.md` for pi, `CLAUDE.md` for Claude Code, `copilot-instructions.md` for GitHub Copilot CLI) embeds shared blocks using HTML comment fences:
 
 ```markdown
 <!-- block: code-style -->
@@ -257,7 +257,7 @@ These scenarios are the acceptance test for the pattern: if any requires more th
 ### Changing a universal behavior (e.g., banning em-dashes and "it's not X, it's Y" patterns)
 
 1. Edit `shared/blocks/code-style.md` — add the rule in prose.
-2. Run `python tools/sync.py --apply` — rewrites the `<!-- block: code-style -->` fence in `harnesses/pi/AGENTS.md`, `harnesses/claude-code/CLAUDE.md`, and `harnesses/copilot/instructions.md` simultaneously.
+2. Run `python tools/sync.py --apply` — rewrites the `<!-- block: code-style -->` fence in `harnesses/pi/AGENTS.md`, `harnesses/claude-code/CLAUDE.md`, and `harnesses/copilot/copilot-instructions.md` simultaneously.
 3. Run `python tools/verify.py` — exits `0` if all three fences now match the canonical source.
 4. Commit. Because all three harness files are already symlinked into `~/.pi/agent/`, `~/.claude/`, and `~/.github/`, the change is live immediately with no further propagation step.
 

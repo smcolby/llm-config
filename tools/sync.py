@@ -24,7 +24,7 @@ AGENT_CONFIG = REPO / "tools/harness_agent_config.toml"
 HARNESS_INSTRUCTION_FILES = {
     "pi": HARNESSES_DIR / "pi/AGENTS.md",
     "claude-code": HARNESSES_DIR / "claude-code/CLAUDE.md",
-    "copilot": HARNESSES_DIR / "copilot/instructions.md",
+    "copilot": HARNESSES_DIR / "copilot/copilot-instructions.md",
 }
 
 FENCE_RE = re.compile(

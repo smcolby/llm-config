@@ -45,7 +45,7 @@ shared/
 harnesses/
   pi/              # Pi harness: AGENTS.md, settings.json, models.json, claude-bridge.json, agents/
   claude-code/     # Claude Code harness: CLAUDE.md, RTK.md, settings.json
-  copilot/         # Copilot CLI harness: instructions.md, agents/
+  copilot/         # Copilot CLI harness: copilot-instructions.md, agents/
 tools/
   sync.py                  # Drift detection and block/agent propagation
   verify.py                # Congruence tests — exits non-zero on drift
@@ -132,7 +132,7 @@ git add -A && git commit -m "..."
 ```bash
 # open the harness file and move the changed content to a line outside the fence
 # (above or below the <!-- block --> markers)
-$EDITOR harnesses/<harness>/AGENTS.md  # or CLAUDE.md / instructions.md
+$EDITOR harnesses/<harness>/AGENTS.md  # or CLAUDE.md / copilot-instructions.md
 
 # restore the fence content from shared
 python tools/sync.py --apply

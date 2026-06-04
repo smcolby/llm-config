@@ -27,7 +27,7 @@ AGENT_CONFIG = REPO / "tools/harness_agent_config.toml"
 HARNESS_FILES = {
     "pi": HARNESSES_DIR / "pi/AGENTS.md",
     "claude-code": HARNESSES_DIR / "claude-code/CLAUDE.md",
-    "copilot": HARNESSES_DIR / "copilot/instructions.md",
+    "copilot": HARNESSES_DIR / "copilot/copilot-instructions.md",
 }
 
 HARNESS_LIVE_INSTR = {
@@ -54,7 +54,7 @@ SYMLINK_MAP = {
     ],
     "copilot": [
         (
-            REPO / "harnesses/copilot/instructions.md",
+            REPO / "harnesses/copilot/copilot-instructions.md",
             HOME / ".github/copilot-instructions.md",
         ),
         (REPO / "harnesses/copilot/agents", HOME / ".copilot/agents"),
