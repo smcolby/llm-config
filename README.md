@@ -202,6 +202,14 @@ python tools/verify.py --agents          # agent bodies only
 echo '#!/bin/sh\npython tools/verify.py --all' > .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 ```
 
+## System inspection
+
+```bash
+python tools/report.py   # full topology: blocks, agents, skills, symlinks, harness-specific sections
+```
+
+Prints every shared component and how it manifests per harness, verifies all symlinks and wiring, and surfaces harness-specific content for gap analysis. Exits non-zero if any hard check fails (broken symlink, missing render, dangling skill). Requires `rich`: `pip install rich`.
+
 ---
 
 ## Block authoring rules

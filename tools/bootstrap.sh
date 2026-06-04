@@ -129,7 +129,7 @@ echo ""
 echo "Wiring copilot..."
 mkdir -p "$HOME_DIR/.github" "$HOME_DIR/.copilot/skills"
 link "$REPO/harnesses/copilot/instructions.md" "$HOME_DIR/.github/copilot-instructions.md"
-link "$REPO/harnesses/copilot/agents"          "$HOME_DIR/.copilot/agents"
+link "$REPO/harnesses/copilot/agents" "$HOME_DIR/.copilot/agents"
 wire_skill "wiki-ops" # no-op if already done for pi (idempotent)
 echo ""
 
