@@ -72,7 +72,7 @@ Each harness instruction file (`AGENTS.md`, `CLAUDE.md`, `instructions.md`) embe
 ```
 
 `sync.py` reads each `shared/blocks/*.md` file, finds matching fenced regions in all harness files, and either:
-- **`--check` (default):** reports blocks that have drifted from the canonical source
+- **(default, no flag):** reports blocks that have drifted from the canonical source
 - **`--apply`:** rewrites only the fenced regions in place, leaving surrounding harness content untouched
 
 `verify.py` runs `--check` and exits non-zero if any harness block differs from its canonical source. It is the hook for CI and pre-commit.
@@ -85,7 +85,7 @@ Blocks are harness-agnostic prose. If a block needs any harness-specific phrasin
 
 Agent files cannot be symlinked wholesale because their frontmatter schemas differ per harness: Copilot CLI requires `name`, `model`, and `tools` fields while pi only uses `description`. If a single file were symlinked to both harnesses, it would either have the wrong fields for one of them or require a lowest-common-denominator format that satisfies neither. The solution is to store only the body (the actual behavioral content, which is harness-agnostic) in shared, and render harness-appropriate frontmatter on top of it.
 
-The `shared/agents/` directory contains the **body only** of each agent — plain markdown, no frontmatter. Frontmatter is harness-specific:
+Each file in `shared/agents/` has minimal YAML frontmatter (`name:` and `description:`) followed by the harness-agnostic body. `sync.py` reads the frontmatter fields it needs and discards the rest when rendering harness files. Frontmatter rendered into each harness:
 
 | Field | pi | Copilot CLI |
 |-------|-----|-------------|
@@ -94,24 +94,23 @@ The `shared/agents/` directory contains the **body only** of each agent — plai
 | `model` | no | yes |
 | `tools` | no | yes |
 
-A thin per-harness config (stored in `tools/harness_agent_config.toml`) defines the frontmatter template to prepend per harness:
+A thin per-harness config (`tools/harness_agent_config.toml`) controls which fields appear and what values to use for static fields:
 
 ```toml
-[harnesses.copilot]
-filename_suffix = ".agent.md"
-frontmatter_extra = """
-model: claude-sonnet-4-6
-tools: ['read', 'search', 'edit', 'execute']
-"""
-
 [harnesses.pi]
 filename_suffix = ".md"
-frontmatter_extra = ""
+include_fields = ["description"]
+
+[harnesses.copilot]
+filename_suffix = ".agent.md"
+include_fields = ["name", "description", "model", "tools"]
+model = "claude-sonnet-4-6"
+tools = ["read", "search", "edit", "execute"]
 ```
 
 `sync.py --agents` reads `shared/agents/*.md`, renders each to `harnesses/{harness}/agents/`, and reports drift. The rendered files are committed to the repo so the diff is always visible.
 
-**Adding a new agent:** write `shared/agents/my-agent.md` with a `description:` line at the top (used to populate that frontmatter field), then run `sync.py --agents --apply`.
+**Adding a new agent:** write `shared/agents/my-agent.md` with YAML frontmatter containing at minimum `name:` and `description:` (sync.py reads these when building harness frontmatter), then run `sync.py --agents --apply`.
 
 ---
 
@@ -123,15 +122,15 @@ Skills come from one of two places:
 - **`shared/skills/<name>/`** — for general-purpose skills with no domain coupling
 - **An external domain repo** — for skills tightly coupled to a specific project or knowledge base (see [Relationship to external skill repos](#relationship-to-external-skill-repos))
 
-`bootstrap.sh --skill <name>` handles both cases: it checks the domain repo location first, falls back to `shared/skills/`, and creates symlinks into each harness's skill directory.
+Skills are wired by adding `ln -sf` entries to `bootstrap.sh` — one per harness skill directory. Claude Code has no native skill directory, so it uses an `@`-include line in `harnesses/claude-code/CLAUDE.md` pointing directly at the `SKILL.md` file.
 
 | Harness | Live skill directory | Mechanism |
-|---------|---------------------|----------|
-| pi | `~/.pi/agent/skills/<name>/` | `bootstrap.sh` symlinks from the skill source |
-| Copilot CLI | `~/.copilot/skills/<name>/` | `bootstrap.sh` symlinks from the skill source |
-| Claude Code | (no native skill dir) | Referenced via `@`-include in `harnesses/claude-code/CLAUDE.md` pointing to the skill source |
+|---------|---------------------|-----------|
+| pi | `~/.pi/agent/skills/<name>/` | `bootstrap.sh` symlinks the skill directory |
+| Copilot CLI | `~/.copilot/skills/<name>/` | `bootstrap.sh` symlinks the skill directory |
+| Claude Code | (no native skill dir) | `@`-include in `harnesses/claude-code/CLAUDE.md` pointing at `SKILL.md` |
 
-New skills follow the same pattern: if general-purpose, add `shared/skills/{name}/SKILL.md`; if domain-specific, place it in the domain repo and document the source in this repo's README. Then run `bootstrap.sh --skill {name}` and add an `@`-include to the Claude Code harness file.
+New skills follow the same pattern: if general-purpose, add `shared/skills/{name}/SKILL.md`; if domain-specific, place it in the domain repo. Then add symlink entries to `bootstrap.sh`, run it, and add the `@`-include to the Claude Code harness file.
 
 ---
 
@@ -225,10 +224,11 @@ Harness-specific sections are always shown and never cause a non-zero exit — t
 
 **To add a new harness:**
 1. Create `harnesses/{name}/` with its instruction file(s)
-2. Add block fences for all shared blocks you want included
-3. Add symlink entries to `bootstrap.sh`
-4. Add harness to `tools/harness_agent_config.toml`
-5. Run `python tools/sync.py --apply && python tools/verify.py`
+2. Add the harness to the `HARNESS_INSTRUCTION_FILES` dict in `tools/sync.py`
+3. Add block fences for all shared blocks you want included
+4. Add symlink entries to `bootstrap.sh`
+5. Add harness to `tools/harness_agent_config.toml` (if it needs agent rendering)
+6. Run `python tools/sync.py --apply && python tools/verify.py`
 
 ---
 
@@ -275,14 +275,14 @@ This involves two artifacts: a skill (procedural instructions for the LLM) and a
 
 1. Write `shared/skills/wiki-ops/SKILL.md` — the canonical skill definition.
 2. Write `shared/blocks/llm-wiki.md` — a short block explaining how to invoke wiki-ops (the activation hint embedded in every harness's global instructions).
-3. Run `bootstrap.sh --skill wiki-ops` — symlinks the skill directory into `~/.pi/agent/skills/wiki-ops/` and `~/.copilot/skills/wiki-ops/`, and adds the `@`-include line to `harnesses/claude-code/CLAUDE.md`.
+3. Add `ln -sf` entries to `bootstrap.sh` for pi and Copilot, run `bootstrap.sh`, and add an `@`-include line to `harnesses/claude-code/CLAUDE.md` pointing at the skill.
 4. Add `<!-- block: llm-wiki -->` fences in the appropriate section of each harness instruction file, then run `python tools/sync.py --apply` to populate them.
 5. Run `python tools/verify.py` — confirms all three harnesses have the identical activation block.
 
-An agent can own steps 3–5 entirely: *"Wire up the wiki-ops skill across all harnesses and verify congruence."* The agent runs bootstrap, adds the fences, syncs, and verifies. You only authored the skill and the block.
+An agent can own steps 3–5 entirely: *"Wire up the wiki-ops skill across all harnesses and verify congruence."* The agent edits bootstrap.sh, adds the fences, syncs, and verifies. You only authored the skill and the block.
 
 **Files authored:** `shared/skills/wiki-ops/SKILL.md`, `shared/blocks/llm-wiki.md`
-**Commands:** `bootstrap.sh --skill wiki-ops` → `sync.py --apply` → `verify.py`
+**Commands:** `bootstrap.sh` → `sync.py --apply` → `verify.py`
 **Manual propagation:** none
 
 ---
@@ -308,7 +308,7 @@ Claude Code has no native agent file format. The persona is available to CC via 
 
 This is the exact scenario that motivated this repo. When a harness becomes unavailable or undesirable, the goal is to remove it without touching anything shared.
 
-1. Remove the harness symlinks: run `bootstrap.sh --remove {harness}` (or manually `unlink` each symlink listed in the symlink map for that harness).
+1. Remove the harness symlinks: manually `unlink` each symlink listed in the symlink map for that harness (or remove its entries from `bootstrap.sh` and re-run).
 2. Move `harnesses/{harness}/` to `harnesses/_deprecated/{harness}/` — keep it in the repo for reference, don't delete it.
 3. Remove the harness from `tools/harness_agent_config.toml`.
 4. Run `python tools/verify.py` — should pass cleanly since the removed harness is no longer checked.
@@ -317,7 +317,7 @@ This is the exact scenario that motivated this repo. When a harness becomes unav
 Shared blocks, skills, and agent bodies are untouched. The remaining harnesses continue operating without interruption. If the harness comes back (billing restored, terms clarified), restore the symlinks and re-add to `harness_agent_config.toml`.
 
 **Files changed:** `tools/harness_agent_config.toml`, `harnesses/_deprecated/` (move)
-**Commands:** `bootstrap.sh --remove {harness}` → `verify.py`
+**Commands:** unlink symlinks → `verify.py`
 **Risk to other harnesses:** none
 
 ---
@@ -365,8 +365,7 @@ There is no sync step because the skill directory is symlinked wholesale, not co
 Skills tightly coupled to a specific project or knowledge domain live in that project's repo, not in `llm-config`. The skill evolves with the thing it knows about — a wiki restructure and its skill update can land in the same commit, in the right repo.
 
 - The canonical `SKILL.md` lives in the source repo (e.g. `~/repos/my-project/.skills/my-skill/`)
-- `bootstrap.sh --skill <name>` checks the domain repo location first, then falls back to `shared/skills/`
-- Symlinks from each harness's skill directory point back to the source repo
+- `bootstrap.sh` symlinks from the source repo into each harness's skill directory
 - Editing the skill in the source repo propagates to all harnesses automatically via those symlinks
 
 **Decision rule:** a skill travels with the thing it knows about. If a skill is tightly coupled to a specific project or data domain, it stays in that project's repo. If it becomes general-purpose and useful regardless of domain context, it graduates to `shared/skills/` in `llm-config` directly.
@@ -414,26 +413,32 @@ For someone implementing this pattern from scratch, or restoring to a completely
    mkdir -p tools
    ```
 
-3. **Write shared blocks** — create `shared/blocks/*.md` files, one per universal instruction topic (code style, guardrails, tool routing, etc.). These are plain prose — no fencing required in the canonical files.
+3. **Install Python dependencies:**
+   ```bash
+   pip install pyyaml rich pre-commit
+   ```
+   `pyyaml` is required by `sync.py`; `rich` by `report.py`; `pre-commit` for the verify hook.
 
-4. **Create harness instruction files** — for each harness, create its instruction file (e.g. `harnesses/harness-a/instructions.md`) containing the harness-specific wrapper text plus `<!-- block: name -->` fences wherever shared blocks should appear. Leave the fences empty for now.
+4. **Write shared blocks** — create `shared/blocks/*.md` files, one per universal instruction topic (code style, guardrails, tool routing, etc.). These are plain prose — no fencing required in the canonical files.
 
-5. **Run initial sync:**
+5. **Create harness instruction files** — for each harness, create its instruction file (e.g. `harnesses/harness-a/instructions.md`) containing the harness-specific wrapper text plus `<!-- block: name -->` fences wherever shared blocks should appear. Leave the fences empty for now. Also register each harness in the `HARNESS_INSTRUCTION_FILES` dict in `tools/sync.py` so block syncing covers it, and in `tools/harness_agent_config.toml` if it needs agent rendering.
+
+6. **Run initial sync:**
    ```bash
    python tools/sync.py --apply   # populates all block fences from shared/blocks/
    python tools/verify.py         # should pass clean
    ```
 
-6. **Write bootstrap.sh** — using the symlink map structure documented in this pattern, wire `harnesses/*/` files into their live harness locations. Make it idempotent (`ln -sf`).
+7. **Write bootstrap.sh** — using the symlink map structure documented in this pattern, wire `harnesses/*/` files into their live harness locations. Make it idempotent (`ln -sf`).
 
-7. **Run bootstrap and verify:**
+8. **Run bootstrap and verify:**
    ```bash
    bash tools/bootstrap.sh
    python tools/verify.py
    git add -A && git commit -m "init: llm-config"
    ```
 
-8. **Complete manual steps** — MCP registrations, API keys, machine-specific config values. `bootstrap.sh` should print a checklist.
+9. **Complete manual steps** — MCP registrations, API keys, machine-specific config values. `bootstrap.sh` should print a checklist.
 
 ---
 
