@@ -21,14 +21,8 @@ ln -sf "$REPO/agent/models.json"   "$PI/models.json"
 
 # Symlink skills — add one ln -sf line per skill
 echo "Linking skills..."
-# wiki-ops: canonical source lives in the llm-wiki repo
-LLM_WIKI="$HOME/repos/llm-wiki/.pi/skills/wiki-ops"
-if [ -d "$LLM_WIKI" ]; then
-  ln -sf "$LLM_WIKI" "$PI/skills/wiki-ops"
-  echo "  wiki-ops → $LLM_WIKI"
-else
-  echo "  ⚠️  wiki-ops skipped — $LLM_WIKI not found (clone llm-wiki first)"
-fi
+ln -sf "$REPO/shared/skills/wiki-ops" "$PI/skills/wiki-ops"
+echo "  wiki-ops → $REPO/shared/skills/wiki-ops"
 
 echo ""
 echo "Done. Manual steps still required:"

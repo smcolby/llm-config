@@ -371,8 +371,6 @@ Skills tightly coupled to a specific project or knowledge domain live in that pr
 
 **Decision rule:** a skill travels with the thing it knows about. If a skill is tightly coupled to a specific project or data domain, it stays in that project's repo. If it becomes general-purpose and useful regardless of domain context, it graduates to `shared/skills/` in `llm-config` directly.
 
-> **Open design question:** this rule works cleanly when the distinction is clear. When a skill like `wiki-ops` is domain-specific (it knows the wiki's file layout and log conventions) but also needs to be available across all harnesses managed by `llm-config`, the right home is less obvious. See the memory entry `llm-config-skills-location` for the full tradeoff.
-
 ---
 
 ### Promoting a harness-side change to shared (reconciling drift)
