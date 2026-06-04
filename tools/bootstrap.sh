@@ -37,6 +37,7 @@ remove_harness() {
 		;;
 	copilot)
 		unlink "$HOME_DIR/.github/copilot-instructions.md" 2>/dev/null || true
+		unlink "$HOME_DIR/.github/hooks/rtk-rewrite.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.copilot/skills/wiki-ops" 2>/dev/null || true
 		;;
 	*)
@@ -127,8 +128,9 @@ echo ""
 # ── copilot harness ───────────────────────────────────────────────────────────
 
 echo "Wiring copilot..."
-mkdir -p "$HOME_DIR/.github" "$HOME_DIR/.copilot/skills"
+mkdir -p "$HOME_DIR/.github/hooks" "$HOME_DIR/.copilot/skills"
 link "$REPO/harnesses/copilot/copilot-instructions.md" "$HOME_DIR/.github/copilot-instructions.md"
+link "$REPO/harnesses/copilot/hooks/rtk-rewrite.json" "$HOME_DIR/.github/hooks/rtk-rewrite.json"
 link "$REPO/harnesses/copilot/agents" "$HOME_DIR/.copilot/agents"
 wire_skill "wiki-ops" # no-op if already done for pi (idempotent)
 echo ""

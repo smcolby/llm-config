@@ -58,6 +58,10 @@ SYMLINK_MAP = {
             REPO / "harnesses/copilot/copilot-instructions.md",
             HOME / ".github/copilot-instructions.md",
         ),
+        (
+            REPO / "harnesses/copilot/hooks/rtk-rewrite.json",
+            HOME / ".github/hooks/rtk-rewrite.json",
+        ),
         (REPO / "harnesses/copilot/agents", HOME / ".copilot/agents"),
     ],
 }
@@ -148,6 +152,14 @@ def _check_cc_hook(cmd: str) -> tuple[bool, str]:
     return False, f"no PreToolUse hook containing '{cmd}' in harnesses/claude-code/settings.json"
 
 
+def _check_dir(path: Path, label: str) -> tuple[bool, str]:
+    return (
+        (True, f"installed at {short(path)}")
+        if path.is_dir()
+        else (False, f"{label} directory not found: {short(path)}")
+    )
+
+
 def _check_mcp(config_path: Path, server: str) -> tuple[bool, str]:
     if not config_path.exists():
         return False, f"{short(config_path)}: file not found"
@@ -174,7 +186,7 @@ def _build_activation_config() -> dict[str, dict[str, tuple[bool, str]]]:
         },
         "context-mode": {
             "pi": _check_pi_package("context-mode"),
-            "claude-code": _check_mcp(HOME / ".claude.json", "context-mode"),
+            "claude-code": _check_dir(HOME / ".claude/context-mode", "context-mode plugin"),
             "copilot": _check_mcp(HOME / ".copilot/mcp-config.json", "context-mode"),
         },
     }
