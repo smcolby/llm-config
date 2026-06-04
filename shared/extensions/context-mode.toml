@@ -14,3 +14,5 @@ manual_setup = "Add to ~/.copilot/mcp-config.json: {\"mcpServers\": {\"context-m
 
 [harnesses.pi]
 verify_pi_package = "npm:context-mode"
+verify_mcp = "~/.pi/agent/mcp.json"
+manual_setup = "Create ~/.pi/agent/mcp.json with mcpServers: {\"context-mode\": {\"command\": \"context-mode\"}}"
