@@ -12,4 +12,4 @@ symlinks = [["harnesses/copilot/hooks/rtk-rewrite.json", "~/.github/hooks/rtk-re
 manual_setup = "rtk init -g --copilot"
 
 [harnesses.pi]
-verify_pi_package = "npm:pi-rtk-optimizer"
+manual_setup = "rtk init --pi"

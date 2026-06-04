@@ -8,7 +8,6 @@
   ],
   "packages": [
     "npm:context-mode",
-    "npm:pi-rtk-optimizer",
     "npm:@ollama/pi-web-search",
     "npm:pi-powerline-footer",
     "npm:pi-claude-bridge"
