@@ -10,6 +10,11 @@
 - Do not end comments with a period.
 <!-- /block: code-style -->
 
+## Git Conventions
+<!-- block: git-conventions -->
+# TODO: populate git commit message conventions
+<!-- /block: git-conventions -->
+
 ## Execution Guardrails
 <!-- block: execution-guardrails -->
 - Never write or execute destructive shell commands without verifying target path states.
