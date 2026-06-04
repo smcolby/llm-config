@@ -226,6 +226,7 @@ echo '#!/bin/sh\npython tools/verify.py --all' > .git/hooks/pre-commit && chmod 
 | `~/.claude/RTK.md` | `harnesses/claude-code/RTK.md` |
 | `~/.claude/settings.json` | `harnesses/claude-code/settings.json` |
 | `~/.github/copilot-instructions.md` | `harnesses/copilot/instructions.md` |
+| `~/.copilot/agents/` | `harnesses/copilot/agents/` |
 | `~/.copilot/skills/wiki-ops/` | `~/repos/llm-wiki/.pi/skills/wiki-ops/` |
 
 ---
