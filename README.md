@@ -146,7 +146,7 @@ git add -A && git commit -m "chore: remove <harness> harness"
 #    Copilot CLI:  https://github.com/github/copilot-cli-for-beginners
 
 # 2. clone this repo and any external skill repos
-git clone git@github.com:smcolby/pi-config.git ~/repos/pi-config
+git clone git@github.com:smcolby/llm-config.git ~/repos/pi-config
 git clone git@github.com:smcolby/llm-wiki.git  ~/repos/llm-wiki
 
 # 3. wire everything
