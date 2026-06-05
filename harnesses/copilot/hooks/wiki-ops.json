@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "bash -c 'idx=$(grep -oP \"Pages: \\K[0-9]+\" ~/repos/llm-wiki/index.md 2>/dev/null); pages=$(find ~/repos/llm-wiki/wiki -name \"*.md\" 2>/dev/null | wc -l | tr -d \" \"); [ -n \"$idx\" ] && [ \"$pages\" != \"$idx\" ] && echo \"wiki-ops: $pages pages on disk but index.md says $idx — update index before committing\" || true'",
+        "timeout": 5
+      }
+    ]
+  }
+}

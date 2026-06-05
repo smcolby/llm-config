@@ -1,0 +1,7 @@
+name = "wiki-ops"
+
+[harnesses.copilot]
+symlinks = [["harnesses/copilot/hooks/wiki-ops.json", "~/.github/hooks/wiki-ops.json"]]
+
+[harnesses.pi]
+symlinks = [["harnesses/pi/extensions/wiki-ops.ts", "~/.pi/agent/extensions/wiki-ops.ts"]]
