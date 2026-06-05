@@ -187,6 +187,24 @@ Entry format:
 
 ---
 
+## Wrap-up (mandatory after every ingest)
+
+Before ending any session that created or modified wiki pages:
+
+1. **Verify page count** — must match `index.md` header:
+   ```bash
+   find wiki -name "*.md" | wc -l   # must equal "Pages: N" in index.md
+   ```
+2. **Update `index.md`** — correct the `Pages:` count and add entries for any
+   new pages under the appropriate section header
+3. **Append to `log.md`** — one `##` entry per ingest/operation performed
+4. **Commit** — the user may ask for atomic commits; group by logical ingest unit
+
+Do not skip these steps even if the user has not asked for them. The index header
+comment says "Updated by wiki-ops on every ingest" — honour it on every ingest.
+
+---
+
 ## Conventions
 
 - Never modify files in `raw/` — read only
