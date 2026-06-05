@@ -38,8 +38,11 @@ llm-config/
 │   │   └── <persona>.md
 │   ├── skills/                       # General-purpose skills with no domain coupling
 │   │   └── <skill>/SKILL.md
-│   └── extensions/                   # Extension manifests — one TOML per globally installed tool
-│       └── <extension>.toml
+│   ├── extensions/                   # Extension manifests — one TOML per globally installed tool
+│   │   └── <extension>.toml
+│   └── models/                       # Shared model provider configs — one JSON + companion TOML per provider
+│       ├── <provider>.json
+│       └── <provider>.toml           # declares which harnesses support this provider
 ├── harnesses/
 │   ├── <harness-a>/
 │   │   ├── <instruction-file>.md     # Composed: shared blocks + harness-specific sections
@@ -232,6 +235,7 @@ Pre-commit hooks (configured in `.pre-commit-config.yaml`) run `verify.py` along
 - Every shared block, which harnesses include it as a fence, and whether the instruction file is correctly symlinked to its live location
 - Every shared agent, which harnesses have a rendered file, and a note for harnesses with no native agent format
 - Every detected skill, whether its symlinks are valid and non-dangling, and the live target path
+- Every shared model config, which harnesses have a symlink to it, and which harnesses are explicitly excluded (e.g. cloud-only harnesses that can't use local model routing)
 - All bootstrap-managed symlinks and their states
 - Harness-specific content outside block fences, per harness — the primary gap-analysis surface for identifying functionality that exists in one harness but not others
 
@@ -258,7 +262,7 @@ Harness-specific sections are always shown and never cause a non-zero exit — t
 3. Commit everything together
 
 **To change something harness-specific** (e.g., pi's model list):
-1. Edit `harnesses/pi/models.json` directly
+1. Edit `shared/models/ollama.json` directly (symlinked into pi via `harnesses/pi/models.json`)
 2. Commit — no sync needed
 
 **To add a new agent/persona:**
@@ -288,6 +292,7 @@ Harness-specific sections are always shown and never cause a non-zero exit — t
 | Domain-specific skill | External domain repo; symlinked by `bootstrap.sh` | Evolves with the domain it serves |
 | Extension wiring | `shared/extensions/<name>.toml` | Per-harness wiring for globally installed tools |
 | Extension instruction content | `shared/blocks/<name>.md` | Same as any other shared block |
+| Model provider config (multi-harness) | `shared/models/<provider>.json` + `.toml` | Config consumed by harness runtimes that support a multi-provider registry (e.g. pi); harnesses with alternative wiring (e.g. Claude Code via `ollama launch claude`) are noted in the companion `.toml` |
 | Harness-specific config | `harnesses/<harness>/<config>.json` | Harness or machine specific; never synced |
 | Machine-specific values | Edited in-place after bootstrap, never committed | Must match this machine's runtime |
 | API keys / tokens | Gitignored paths only | Security |
@@ -375,7 +380,7 @@ Shared blocks, skills, and agent bodies are untouched. The remaining harnesses c
 1. Clone the repo: `git clone ... ~/repos/llm-config`
 2. Run `./tools/bootstrap.sh` — creates all symlinks, wires extension symlinks, reports what needs manual attention.
 3. Edit machine-specific values by hand (bootstrap prints a checklist):
-   - `harnesses/pi/models.json` — update Ollama `baseUrl` to this machine's address
+   - `shared/models/ollama.json` — update Ollama `baseUrl` to this machine's address
    - `harnesses/pi/settings.json` — update absolute `prompts` path if it differs
    - Copy `~/.pi/agent/auth.json` from backup or recreate with API keys (never committed)
    - Complete the one-time extension setup steps printed by bootstrap (e.g., plugin installs)
@@ -454,7 +459,7 @@ For someone implementing this pattern from scratch, or restoring to a completely
    ```bash
    mkdir ~/repos/llm-config && cd ~/repos/llm-config
    git init
-   mkdir -p shared/blocks shared/agents shared/skills shared/extensions
+   mkdir -p shared/blocks shared/agents shared/skills shared/extensions shared/models
    mkdir -p harnesses/harness-a harnesses/harness-b
    mkdir -p tools
    ```

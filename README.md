@@ -44,8 +44,9 @@ shared/
   agents/          # Canonical agent bodies — frontmatter-free, harness-agnostic
   skills/          # General-purpose skill definitions (e.g., wiki-ops/SKILL.md)
   extensions/      # Extension manifests — one TOML per globally installed tool
+  models/          # Shared model provider configs — each *.json symlinked into harnesses that support it; companion *.toml declares which harnesses apply
 harnesses/
-  pi/              # Pi harness: AGENTS.md, settings.json, models.json, mcp.json, claude-bridge.json, extensions/, agents/
+  pi/              # Pi harness: AGENTS.md, settings.json, models.json (→ shared), mcp.json, claude-bridge.json, extensions/, agents/
   claude-code/     # Claude Code harness: CLAUDE.md, RTK.md, settings.json
   copilot/         # Copilot CLI harness: copilot-instructions.md, mcp-config.json, hooks/, agents/
 tools/
@@ -203,7 +204,7 @@ Then complete the checklist bootstrap prints:
 
 | Step | File | What to change |
 |------|------|----------------|
-| Ollama host | `harnesses/pi/models.json` | Update `baseUrl` from `http://loki.local:11434` to this machine's address |
+| Ollama host | `shared/models/ollama.json` | Update `baseUrl` from `http://loki.local:11434` to this machine's address |
 | Prompt path | `harnesses/pi/settings.json` | Update `prompts` absolute path — should be `~/repos/llm-config/harnesses/pi/agents` |
 | Pi auth | `~/.pi/agent/auth.json` | Create with API keys (never committed) |
 | Extensions | (printed by bootstrap) | One-time per-harness setup for each extension (e.g., plugin installs) |
@@ -301,7 +302,7 @@ The `rtk` block is the canonical example of a correctly shared block: RTK suppor
 |-----------|----------------|
 | `~/.pi/agent/AGENTS.md` | `harnesses/pi/AGENTS.md` |
 | `~/.pi/agent/settings.json` | `harnesses/pi/settings.json` |
-| `~/.pi/agent/models.json` | `harnesses/pi/models.json` |
+| `~/.pi/agent/models.json` | `shared/models/ollama.json` (via `agent/models.json` → `shared/models/ollama.json`) |
 | `~/.pi/agent/claude-bridge.json` | `harnesses/pi/claude-bridge.json` |
 | `~/.pi/agent/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 | `~/.claude/CLAUDE.md` | `harnesses/claude-code/CLAUDE.md` |
