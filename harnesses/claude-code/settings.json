@@ -1,4 +1,13 @@
 {
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "includeCoAuthoredBy": false,
+  "includeGitInstructions": false,
+  "permissions": {
+    "defaultMode": "bypassPermissions"
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -12,15 +21,10 @@
       }
     ]
   },
-  "autoMemoryEnabled": false,
-  "includeCoAuthoredBy": false,
-  "includeGitInstructions": false,
-  "attribution": {"commit": "", "pr": ""},
-  "permissions": {
-    "defaultMode": "bypassPermissions"
-  },
-  "theme": "dark",
   "enabledPlugins": {
     "context-mode@context-mode": true
-  }
+  },
+  "autoMemoryEnabled": false,
+  "theme": "dark",
+  "skipDangerousModePermissionPrompt": true
 }
