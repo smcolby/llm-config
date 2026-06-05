@@ -302,7 +302,7 @@ The `rtk` block is the canonical example of a correctly shared block: RTK suppor
 |-----------|----------------|
 | `~/.pi/agent/AGENTS.md` | `harnesses/pi/AGENTS.md` |
 | `~/.pi/agent/settings.json` | `harnesses/pi/settings.json` |
-| `~/.pi/agent/models.json` | `shared/models/ollama.json` (via `agent/models.json` → `shared/models/ollama.json`) |
+| `~/.pi/agent/models.json` | `shared/models/ollama.json` (via `harnesses/pi/models.json` → `shared/models/ollama.json`) |
 | `~/.pi/agent/claude-bridge.json` | `harnesses/pi/claude-bridge.json` |
 | `~/.pi/agent/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 | `~/.claude/CLAUDE.md` | `harnesses/claude-code/CLAUDE.md` |
