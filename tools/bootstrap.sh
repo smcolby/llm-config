@@ -119,6 +119,8 @@ echo ""
 
 echo "Wiring copilot..."
 mkdir -p "$HOME_DIR/.github" "$HOME_DIR/.copilot/skills"
+# rtk hook was renamed rtk-rewrite.json → rtk.json; clean up the old symlink if present
+unlink "$HOME_DIR/.github/hooks/rtk-rewrite.json" 2>/dev/null || true
 link "$REPO/harnesses/copilot/copilot-instructions.md" "$HOME_DIR/.github/copilot-instructions.md"
 link "$REPO/harnesses/copilot/mcp-config.json" "$HOME_DIR/.copilot/mcp-config.json"
 link "$REPO/harnesses/copilot/agents" "$HOME_DIR/.copilot/agents"

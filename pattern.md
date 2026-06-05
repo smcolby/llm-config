@@ -146,7 +146,7 @@ New skills follow the same pattern: if general-purpose, add `shared/skills/{name
 
 Skills and blocks handle LLM-authored content. Extensions are a different category: globally installed third-party tools (installed via brew, npm, etc.) that need per-harness configuration to activate. The installation itself is outside llm-config's scope; the repo owns the wiring only.
 
-Because each harness requires different wiring for the same extension (Claude Code may need a hook entry; Copilot may need a JSON config file symlinked; pi may need nothing beyond the global install), the wiring cannot be captured in a single shared block. Instead, each extension is declared in a TOML manifest in `shared/extensions/`.
+Because each harness requires different wiring for the same extension (Claude Code may need a hook entry; Copilot may need a JSON config file; pi may need a TypeScript extension stub), the wiring cannot be captured in a single shared block. Instead, each extension is declared in a TOML manifest in `shared/extensions/`, and `wire_extensions.py` generates harness-specific files from those declarations.
 
 **Manifest schema:**
 
@@ -155,6 +155,15 @@ name = "MyTool"
 repo = "https://github.com/owner/mytool"
 install = "brew install mytool"   # for reference; not run by llm-config
 block = "mytool"                  # shared block carrying the LLM-facing instructions
+
+# Optional: command-based hooks rendered per harness by wire_extensions.py.
+# Each [[hooks]] entry becomes one event handler. copilot_event → JSON file;
+# pi_event → TypeScript stub. Omit a field to skip that harness.
+[[hooks]]
+copilot_event = "PreToolUse"
+pi_event = "tool_call"
+command = "mytool hook"
+timeout = 5
 
 [harnesses.claude-code]
 verify_hook = "mytool hook claude"     # substring to find in PreToolUse hook commands
@@ -165,21 +174,39 @@ symlinks = [["harnesses/copilot/hooks/mytool.json", "~/.github/hooks/mytool.json
 manual_setup = "mytool init -g --copilot"
 
 [harnesses.pi]
+symlinks = [["harnesses/pi/extensions/mytool.ts", "~/.pi/agent/extensions/mytool.ts"]]
 # omit entirely if the global install is sufficient with no additional wiring
 ```
+
+Extensions whose pi wiring requires more than a simple command (e.g. version checks, custom rewrite logic) should keep a hand-authored `.ts` file and use `symlinks` without `[[hooks]]`.
+
+**MCP servers** are declared separately in `shared/mcp-servers.toml` (not in extension manifests) since they are not always tied to a single extension:
+
+```toml
+[servers.my-server]
+command = "my-server"
+args = ["--mcp"]
+harnesses = ["copilot", "pi"]
+```
+
+`wire_extensions.py` renders this into `harnesses/copilot/mcp-config.json` and `harnesses/pi/mcp.json`.
 
 Supported verify check types (one per harness, checked by `report.py`):
 - `verify_hook`: substring to find in a PreToolUse hook command in the Claude Code settings
 - `verify_dir`: directory path to check for existence (used for plugin installs)
 - `verify_mcp`: path to an MCP config file to check for server registration
 
-**`wire_extensions.py`** reads all manifests and:
-1. Creates any `symlinks` declared per harness (analogous to `bootstrap.sh`'s `link` function)
-2. Prints a `manual_setup` checklist for one-time steps that cannot be automated
+**`wire_extensions.py`** reads all manifests and `shared/mcp-servers.toml`, then:
+1. Generates copilot hook JSON files and pi TypeScript stubs from `[[hooks]]` entries
+2. Generates MCP config files from `shared/mcp-servers.toml`
+3. Creates `symlinks` declared per harness
+4. Prints a `manual_setup` checklist for one-time steps that cannot be automated
 
-`bootstrap.sh` calls `wire_extensions.py` automatically. **Adding a new extension requires no changes to `bootstrap.sh` or `report.py`** — drop a TOML in `shared/extensions/` and both tools pick it up.
+Pass `--check` to report drift in generated files without writing. `verify.py` calls this automatically.
 
-The LLM-facing instruction content for each extension lives in the shared block named by `block`. The manifest handles only the mechanism (wiring); the block handles the content (what the LLM reads).
+Generated files are committed to the repo (same pattern as rendered agent files) — `git diff` always shows what changed. `bootstrap.sh` calls `wire_extensions.py` automatically. **Adding a new extension requires no changes to `bootstrap.sh` or `report.py`** — drop a TOML in `shared/extensions/` and both tools pick it up.
+
+The LLM-facing instruction content for each extension lives in the shared block named by `block`. The manifest handles only the mechanism (wiring and generation); the block handles the content (what the LLM reads).
 
 ---
 

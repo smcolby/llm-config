@@ -1,5 +1,11 @@
 name = "wiki-ops"
 
+[[hooks]]
+copilot_event = "Stop"
+pi_event = "turn_end"
+command = "~/repos/llm-wiki/tools/health-check.sh"
+timeout = 5
+
 [harnesses.copilot]
 symlinks = [["harnesses/copilot/hooks/wiki-ops.json", "~/.github/hooks/wiki-ops.json"]]
 

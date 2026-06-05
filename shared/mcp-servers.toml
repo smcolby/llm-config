@@ -1,0 +1,11 @@
+# Shared MCP server manifest — rendered into harness-specific MCP configs by wire_extensions.py.
+# Edit here; run wire_extensions.py to regenerate harnesses/*/mcp*.json.
+
+[servers.context-mode]
+command = "context-mode"
+harnesses = ["copilot", "pi"]
+
+[servers.sentrux]
+command = "sentrux"
+args = ["--mcp"]
+harnesses = ["copilot"]

@@ -3,11 +3,16 @@ repo = "https://github.com/rtk-ai/rtk"
 install = "brew install rtk"
 block = "rtk"
 
+[[hooks]]
+copilot_event = "PreToolUse"
+command = "rtk hook copilot"
+timeout = 5
+
 [harnesses.claude-code]
 verify_hook = "rtk hook claude"
 
 [harnesses.copilot]
-symlinks = [["harnesses/copilot/hooks/rtk-rewrite.json", "~/.github/hooks/rtk-rewrite.json"]]
+symlinks = [["harnesses/copilot/hooks/rtk.json", "~/.github/hooks/rtk.json"]]
 
 [harnesses.pi]
 symlinks = [["harnesses/pi/extensions/rtk.ts", "~/.pi/agent/extensions/rtk.ts"]]

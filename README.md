@@ -240,13 +240,23 @@ For domain-specific skills tightly coupled to a single project, the skill can li
 
 ## Extensions
 
-Extensions are globally installed tools that need per-harness wiring. **llm-config does not install them** — that is the user's responsibility. The repo only owns the wiring: which files to symlink, which mechanism checks to verify, and which one-time setup commands to print in bootstrap's checklist.
+Extensions are globally installed tools that need per-harness wiring. **llm-config does not install them** — that is the user's responsibility. The repo owns the wiring and generates harness-specific files from shared definitions.
 
 | Extension | Install yourself first | Wiring manifest |
 |-----------|------------------------|-----------------|
 | RTK | `brew install rtk` | `shared/extensions/rtk.toml` |
 | context-mode | `npm install -g context-mode` | `shared/extensions/context-mode.toml` |
 | wiki-ops | *(llm-wiki repo)* | `shared/extensions/wiki-ops.toml` |
+
+**`[[hooks]]` entries** in a manifest define command-based hooks. `wire_extensions.py` renders them into:
+- `harnesses/copilot/hooks/<name>.json` — copilot hook JSON (from `copilot_event`)
+- `harnesses/pi/extensions/<name>.ts` — pi TypeScript stub (from `pi_event`)
+
+Complex extensions with TypeScript logic beyond a simple command (e.g. RTK's pi extension) remain hand-authored; they use `symlinks` entries as before and are not generated.
+
+**`shared/mcp-servers.toml`** declares all MCP servers with a `harnesses` list. `wire_extensions.py` renders `harnesses/copilot/mcp-config.json` and `harnesses/pi/mcp.json` from it.
+
+Generated files are committed to the repo (same pattern as rendered agent files). Run `wire_extensions.py` after changing manifests or `mcp-servers.toml`; `verify.py` catches drift.
 
 `report.py` reads manifests to verify extension wiring at any time. If an extension is not globally installed, its verify checks will fail — that is expected on machines where it has not been installed.
 
@@ -310,14 +320,14 @@ The `rtk` block is the canonical example of a correctly shared block: RTK suppor
 | `~/.claude/settings.json` | `harnesses/claude-code/settings.json` |
 | `~/.claude/skills/llm-wiki` | `~/repos/llm-wiki` (plugin: Stop hook + health-check.sh) |
 | `~/.github/copilot-instructions.md` | `harnesses/copilot/copilot-instructions.md` |
-| `~/.github/hooks/rtk-rewrite.json` | `harnesses/copilot/hooks/rtk-rewrite.json` |
+| `~/.github/hooks/rtk.json` | `harnesses/copilot/hooks/rtk.json` *(generated)* |
 | `~/.github/hooks/context-mode.json` | `harnesses/copilot/hooks/context-mode.json` |
-| `~/.github/hooks/wiki-ops.json` | `harnesses/copilot/hooks/wiki-ops.json` |
-| `~/.copilot/mcp-config.json` | `harnesses/copilot/mcp-config.json` |
+| `~/.github/hooks/wiki-ops.json` | `harnesses/copilot/hooks/wiki-ops.json` *(generated)* |
+| `~/.copilot/mcp-config.json` | `harnesses/copilot/mcp-config.json` *(generated)* |
 | `~/.copilot/agents/` | `harnesses/copilot/agents/` |
 | `~/.pi/agent/mcp.json` | `harnesses/pi/mcp.json` |
 | `~/.pi/agent/extensions/rtk.ts` | `harnesses/pi/extensions/rtk.ts` |
-| `~/.pi/agent/extensions/wiki-ops.ts` | `harnesses/pi/extensions/wiki-ops.ts` |
+| `~/.pi/agent/extensions/wiki-ops.ts` | `harnesses/pi/extensions/wiki-ops.ts` *(generated)* |
 | `~/.copilot/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 
 

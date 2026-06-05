@@ -18,6 +18,7 @@ from pathlib import Path
 
 REPO = Path(__file__).parent.parent
 SYNC = REPO / "tools/sync.py"
+WIRE = REPO / "tools/wire_extensions.py"
 
 
 def main():
@@ -37,8 +38,9 @@ def main():
     elif args.all_:
         cmd += ["--all"]
 
-    result = subprocess.run(cmd)
-    sys.exit(result.returncode)
+    result_sync = subprocess.run(cmd)
+    result_wire = subprocess.run([sys.executable, str(WIRE), "--check"])
+    sys.exit(result_sync.returncode | result_wire.returncode)
 
 
 if __name__ == "__main__":
