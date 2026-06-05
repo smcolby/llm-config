@@ -47,7 +47,7 @@ shared/
   models/          # Shared model provider configs — each *.json symlinked into harnesses that support it; companion *.toml declares which harnesses apply
 harnesses/
   pi/              # Pi harness: AGENTS.md, settings.json, models.json (→ shared), mcp.json, claude-bridge.json, extensions/, agents/
-  claude-code/     # Claude Code harness: CLAUDE.md, RTK.md, settings.json
+  claude-code/     # Claude Code harness: CLAUDE.md, settings.json
   copilot/         # Copilot CLI harness: copilot-instructions.md, mcp-config.json, hooks/, agents/
 tools/
   sync.py                  # Drift detection and block/agent propagation
@@ -246,6 +246,7 @@ Extensions are globally installed tools that need per-harness wiring. **llm-conf
 |-----------|------------------------|-----------------|
 | RTK | `brew install rtk` | `shared/extensions/rtk.toml` |
 | context-mode | `npm install -g context-mode` | `shared/extensions/context-mode.toml` |
+| wiki-ops | *(llm-wiki repo)* | `shared/extensions/wiki-ops.toml` |
 
 `report.py` reads manifests to verify extension wiring at any time. If an extension is not globally installed, its verify checks will fail — that is expected on machines where it has not been installed.
 
@@ -306,15 +307,17 @@ The `rtk` block is the canonical example of a correctly shared block: RTK suppor
 | `~/.pi/agent/claude-bridge.json` | `harnesses/pi/claude-bridge.json` |
 | `~/.pi/agent/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 | `~/.claude/CLAUDE.md` | `harnesses/claude-code/CLAUDE.md` |
-| `~/.claude/RTK.md` | `harnesses/claude-code/RTK.md` |
 | `~/.claude/settings.json` | `harnesses/claude-code/settings.json` |
+| `~/.claude/skills/llm-wiki` | `~/repos/llm-wiki` (plugin: Stop hook + health-check.sh) |
 | `~/.github/copilot-instructions.md` | `harnesses/copilot/copilot-instructions.md` |
 | `~/.github/hooks/rtk-rewrite.json` | `harnesses/copilot/hooks/rtk-rewrite.json` |
 | `~/.github/hooks/context-mode.json` | `harnesses/copilot/hooks/context-mode.json` |
+| `~/.github/hooks/wiki-ops.json` | `harnesses/copilot/hooks/wiki-ops.json` |
 | `~/.copilot/mcp-config.json` | `harnesses/copilot/mcp-config.json` |
 | `~/.copilot/agents/` | `harnesses/copilot/agents/` |
 | `~/.pi/agent/mcp.json` | `harnesses/pi/mcp.json` |
 | `~/.pi/agent/extensions/rtk.ts` | `harnesses/pi/extensions/rtk.ts` |
+| `~/.pi/agent/extensions/wiki-ops.ts` | `harnesses/pi/extensions/wiki-ops.ts` |
 | `~/.copilot/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 
 

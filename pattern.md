@@ -134,9 +134,11 @@ Skills are wired by adding `ln -sf` entries to `bootstrap.sh` — one per harnes
 |---------|---------------------|-----------|
 | pi | `~/.pi/agent/skills/<name>/` | `bootstrap.sh` symlinks the skill directory |
 | Copilot CLI | `~/.copilot/skills/<name>/` | `bootstrap.sh` symlinks the skill directory |
-| Claude Code | (no native skill dir) | `@`-include in `harnesses/claude-code/CLAUDE.md` pointing at `SKILL.md` |
+| Claude Code | `~/.claude/skills/<name>/` | `bootstrap.sh` symlinks the skill or plugin directory; `@`-include in `harnesses/claude-code/CLAUDE.md` points at `SKILL.md` for instruction delivery |
 
-New skills follow the same pattern: if general-purpose, add `shared/skills/{name}/SKILL.md`; if domain-specific, place it in the domain repo. Then add symlink entries to `bootstrap.sh`, run it, and add the `@`-include to the Claude Code harness file.
+Claude Code's `~/.claude/skills/` directory serves double duty: it is both a skill directory (for `@`-include-based instruction delivery) and a plugin directory (for repos that define `hooks/hooks.json` and `.claude-plugin/plugin.json`). The `enabledPlugins` key in `settings.json` activates plugins installed here.
+
+New skills follow the same pattern: if general-purpose, add `shared/skills/{name}/SKILL.md`; if domain-specific, place it in the domain repo. Then add symlink entries to `bootstrap.sh`, run it, and add the `@`-include to the Claude Code harness file. If the skill repo also ships hooks, enable it as a plugin in `settings.json`.
 
 ---
 
