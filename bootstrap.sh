@@ -29,4 +29,7 @@ echo "Done. Manual steps still required:"
 echo "  1. Create ~/.pi/agent/auth.json with your API keys (never committed)"
 echo "  2. Update agent/settings.json: 'prompts' paths are machine-specific"
 echo "  3. Update agent/models.json: 'baseUrl' for Ollama is machine-specific"
-echo "     (current: http://loki.local:11434 — update to your local address)"
+echo "     (current: http://loki.local:11434 — update shared/models/ollama.json baseUrl to your local address)"
+if [ -z "${OLLAMA_HOST:-}" ]; then
+  echo "  4. Add 'export OLLAMA_HOST=http://loki.local:11434' to your shell profile so 'ollama launch claude' routes to loki.local"
+fi
