@@ -34,7 +34,6 @@ remove_harness() {
 		;;
 	claude-code)
 		unlink "$HOME_DIR/.claude/CLAUDE.md" 2>/dev/null || true
-		unlink "$HOME_DIR/.claude/RTK.md" 2>/dev/null || true
 		unlink "$HOME_DIR/.claude/settings.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.claude/skills/llm-wiki" 2>/dev/null || true
 		;;
@@ -109,7 +108,6 @@ echo ""
 if [ -d "$HOME_DIR/.claude" ]; then
 	echo "Wiring claude-code..."
 	link "$REPO/harnesses/claude-code/CLAUDE.md" "$HOME_DIR/.claude/CLAUDE.md"
-	link "$REPO/harnesses/claude-code/RTK.md" "$HOME_DIR/.claude/RTK.md"
 	link "$REPO/harnesses/claude-code/settings.json" "$HOME_DIR/.claude/settings.json"
 	link "$HOME_DIR/repos/llm-wiki" "$HOME_DIR/.claude/skills/llm-wiki"
 else
