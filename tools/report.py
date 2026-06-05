@@ -22,6 +22,7 @@ REPO = Path(__file__).parent.parent
 HOME = Path.home()
 BLOCKS_DIR = REPO / "shared/blocks"
 AGENTS_DIR = REPO / "shared/agents"
+MODELS_DIR = REPO / "shared/models"
 EXTENSIONS_DIR = REPO / "shared/extensions"
 HARNESSES_DIR = REPO / "harnesses"
 AGENT_CONFIG = REPO / "tools/harness_agent_config.toml"
@@ -378,6 +379,70 @@ def inspect_skills(errors: list, warnings: list):
                 errors.append(f"skill '{skill_name}': {harness} not wired")
 
 
+# ── models ────────────────────────────────────────────────────────────────────
+
+
+def inspect_models(errors: list, warnings: list):
+    section("SHARED MODELS")
+
+    if not MODELS_DIR.exists():
+        console.print("\n  [dim]no shared models defined[/dim]")
+        return
+
+    model_files = sorted(MODELS_DIR.glob("*.json"))
+    if not model_files:
+        console.print("\n  [dim]no model files found[/dim]")
+        return
+
+    # Directories to scan for symlinks pointing into shared/models/
+    scan_dirs = [REPO / "agent", *[HARNESSES_DIR / h for h in HARNESS_FILES]]
+
+    for model_file in model_files:
+        console.print(f"\n  [bold cyan]{model_file.name}[/bold cyan]")
+
+        # Load companion manifest if present (same stem, .toml extension)
+        manifest_path = model_file.with_suffix(".toml")
+        manifest: dict = {}
+        if manifest_path.exists():
+            with open(manifest_path, "rb") as f:
+                manifest = tomllib.load(f)
+        expected_harnesses: list[str] = manifest.get("harnesses", [])
+        not_applicable: dict[str, str] = manifest.get("not_applicable", {})
+        notes: dict[str, str] = manifest.get("notes", {})
+
+        # Find all symlinks in scan dirs that resolve to this model file
+        wired: dict[str, Path] = {}
+        for scan_dir in scan_dirs:
+            if not scan_dir.exists():
+                continue
+            for candidate in scan_dir.iterdir():
+                if candidate.is_symlink() and candidate.resolve() == model_file.resolve():
+                    wired[scan_dir.name] = candidate
+
+        # Report per harness
+        all_harnesses = list(HARNESS_FILES.keys())
+        for harness in all_harnesses:
+            if harness in not_applicable:
+                harness_row(harness, f"[dim]—  not applicable ({not_applicable[harness]})[/dim]")
+            elif harness in notes:
+                harness_row(harness, f"[dim]ℹ  {notes[harness]}[/dim]")
+            elif harness in wired or harness in expected_harnesses:
+                link = wired.get(harness)
+                if link:
+                    harness_row(harness, s_ok(short(link), f"→ {short(model_file)}"))
+                else:
+                    harness_row(harness, s_err(f"expected symlink missing in harnesses/{harness}/"))
+                    errors.append(f"shared model '{model_file.name}': {harness} symlink missing")
+            # harnesses that are neither expected nor excluded are silently skipped
+
+        # Also report agent/ symlink (pi's live-wiring intermediary)
+        if "agent" in wired:
+            harness_row("agent/", s_ok(short(wired["agent"]), f"→ {short(model_file)}"))
+
+        if not wired and expected_harnesses:
+            warnings.append(f"shared model '{model_file.name}': no harness symlinks found")
+
+
 # ── symlinks ──────────────────────────────────────────────────────────────────
 
 
@@ -444,6 +509,7 @@ def main():
     inspect_blocks(errors, warnings)
     inspect_agents(errors, warnings)
     inspect_skills(errors, warnings)
+    inspect_models(errors, warnings)
     inspect_symlinks(errors, warnings)
     inspect_harness_specific()
 
