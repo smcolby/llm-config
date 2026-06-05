@@ -395,7 +395,7 @@ def inspect_models(errors: list, warnings: list):
         return
 
     # Directories to scan for symlinks pointing into shared/models/
-    scan_dirs = [REPO / "agent", *[HARNESSES_DIR / h for h in HARNESS_FILES]]
+    scan_dirs = [HARNESSES_DIR / h for h in HARNESS_FILES]
 
     for model_file in model_files:
         console.print(f"\n  [bold cyan]{model_file.name}[/bold cyan]")
@@ -434,10 +434,6 @@ def inspect_models(errors: list, warnings: list):
                     harness_row(harness, s_err(f"expected symlink missing in harnesses/{harness}/"))
                     errors.append(f"shared model '{model_file.name}': {harness} symlink missing")
             # harnesses that are neither expected nor excluded are silently skipped
-
-        # Also report agent/ symlink (pi's live-wiring intermediary)
-        if "agent" in wired:
-            harness_row("agent/", s_ok(short(wired["agent"]), f"→ {short(model_file)}"))
 
         if not wired and expected_harnesses:
             warnings.append(f"shared model '{model_file.name}': no harness symlinks found")

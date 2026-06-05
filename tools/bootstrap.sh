@@ -134,9 +134,12 @@ echo ""
 # ── manual steps checklist ────────────────────────────────────────────────────
 
 echo "=== Manual steps required ==="
-echo "  1. Edit harnesses/pi/models.json — update Ollama baseUrl to this machine's address"
+echo "  1. Edit shared/models/ollama.json — update Ollama baseUrl to this machine's address"
 echo "  2. Edit harnesses/pi/settings.json — update 'prompts' absolute path if needed"
 echo "  3. Create ~/.pi/agent/auth.json with API keys (never committed)"
 echo "  (Extension-specific one-time setup printed above)"
+if [ -z "${OLLAMA_HOST:-}" ]; then
+	echo "  4. Add 'export OLLAMA_HOST=http://loki.local:11434' to your shell profile so 'ollama launch claude' routes to loki.local"
+fi
 echo ""
 echo "Run 'python tools/verify.py' to confirm congruence."
