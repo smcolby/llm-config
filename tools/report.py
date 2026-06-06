@@ -39,6 +39,14 @@ HARNESS_LIVE_INSTR = {
     "copilot": HOME / ".github/copilot-instructions.md",
 }
 
+# Generated files that bootstrap.sh produces via template substitution (not symlinks)
+GENERATED_MAP: dict[str, list[Path]] = {
+    "claude-code": [
+        HOME / ".claude/CLAUDE.md",
+        HOME / ".claude/settings.json",
+    ],
+}
+
 # Symlinks that bootstrap.sh is responsible for creating (core harness wiring only;
 # extension symlinks are defined in shared/extensions/*.toml and managed by wire_extensions.py)
 SYMLINK_MAP = {
@@ -48,10 +56,7 @@ SYMLINK_MAP = {
         (REPO / "harnesses/pi/models.json", HOME / ".pi/agent/models.json"),
         (REPO / "harnesses/pi/mcp.json", HOME / ".pi/agent/mcp.json"),
     ],
-    "claude-code": [
-        (REPO / "harnesses/claude-code/CLAUDE.md", HOME / ".claude/CLAUDE.md"),
-        (REPO / "harnesses/claude-code/settings.json", HOME / ".claude/settings.json"),
-    ],
+    "claude-code": [],
     "copilot": [
         (
             REPO / "harnesses/copilot/copilot-instructions.md",
@@ -268,7 +273,6 @@ def inspect_blocks(errors: list, warnings: list):
 
             has_fence = bool(re.search(rf"<!-- block: {re.escape(name)} -->", instr.read_text()))
             live = HARNESS_LIVE_INSTR[harness]
-            sym_ok, sym_msg = check_symlink(instr, live)
 
             fence_s = (
                 s_ok("fence") if has_fence else s_warn("no fence", "not included in this harness")
@@ -276,9 +280,21 @@ def inspect_blocks(errors: list, warnings: list):
             if not has_fence:
                 warnings.append(f"block '{name}': not included in {harness}")
 
-            sym_s = s_ok(short(live)) if sym_ok else s_err(f"{short(live)}: {sym_msg}")
-            if not sym_ok:
-                errors.append(f"symlink broken: {short(live)} ({sym_msg})")
+            if harness == "claude-code":
+                # CLAUDE.md is a generated file (not a symlink) — bootstrap.sh resolves placeholders
+                if live.exists() and not live.is_symlink():
+                    sym_s = s_ok(short(live), "(generated)")
+                elif live.is_symlink():
+                    sym_s = s_warn(short(live), "still a symlink — re-run bootstrap.sh")
+                    warnings.append(f"generated file {short(live)}: still a symlink, re-run bootstrap.sh")
+                else:
+                    sym_s = s_err(f"{short(live)}: not found — run bootstrap.sh")
+                    errors.append(f"generated file {short(live)}: not found")
+            else:
+                sym_ok, sym_msg = check_symlink(instr, live)
+                sym_s = s_ok(short(live)) if sym_ok else s_err(f"{short(live)}: {sym_msg}")
+                if not sym_ok:
+                    errors.append(f"symlink broken: {short(live)} ({sym_msg})")
 
             harness_row(harness, f"{fence_s}  ·  {sym_s}")
 
@@ -332,7 +348,7 @@ def inspect_skills(errors: list, warnings: list):
     if cc.exists():
         for line in cc.read_text().splitlines():
             if line.startswith("@") and "SKILL.md" in line:
-                p = Path(line[1:])
+                p = Path(line[1:].replace("__REPO__", str(REPO)))
                 skills.setdefault(p.parent.name, {})["claude-code"] = p
 
     if not skills:
@@ -440,15 +456,25 @@ def inspect_models(errors: list, warnings: list):
 def inspect_symlinks(errors: list, warnings: list):
     section("SYMLINKS")
 
-    for harness, links in SYMLINK_MAP.items():
+    all_harnesses = sorted(set(list(SYMLINK_MAP) + list(GENERATED_MAP)))
+    for harness in all_harnesses:
         console.print(f"\n  [bold]{harness}[/bold]")
-        for src, dst in links:
+        for src, dst in SYMLINK_MAP.get(harness, []):
             ok_flag, msg = check_symlink(src, dst)
             if ok_flag:
                 console.print(f"    {s_ok(short(dst), f'→ {short(src)}')}")
             else:
                 console.print(f"    {s_err(f'{short(dst)}: {msg}')}")
                 errors.append(f"symlink {short(dst)}: {msg}")
+        for dst in GENERATED_MAP.get(harness, []):
+            if dst.exists() and not dst.is_symlink():
+                console.print(f"    {s_ok(short(dst), '(generated)')}")
+            elif dst.is_symlink():
+                console.print(f"    {s_warn(short(dst), 'still a symlink — re-run bootstrap.sh')}")
+                warnings.append(f"generated file {short(dst)}: still a symlink, re-run bootstrap.sh")
+            else:
+                console.print(f"    {s_err(f'{short(dst)}: not found — run bootstrap.sh')}")
+                errors.append(f"generated file {short(dst)}: not found")
 
 
 # ── harness-specific ──────────────────────────────────────────────────────────
@@ -466,7 +492,7 @@ def inspect_harness_specific():
         # strip all fenced regions; what remains is harness-specific
         stripped = FENCE_RE.sub("", instr.read_text())
         items = [
-            line.strip()
+            line.strip().replace("__REPO__", str(REPO))
             for line in stripped.splitlines()
             if line.strip()
             and line.strip() != "---"

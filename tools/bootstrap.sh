@@ -19,6 +19,20 @@ link() {
 	fi
 }
 
+generate_file() {
+	local src="$1" dst="$2"
+	mkdir -p "$(dirname "$dst")"
+	local generated
+	generated="$(sed -e "s|@__REPO__|@${REPO}|g" -e "s|__HOME__|${HOME_DIR}|g" "$src")"
+	if [ -f "$dst" ] && [ ! -L "$dst" ] && [ "$(cat "$dst")" = "$generated" ]; then
+		echo "  ok   $dst"
+	else
+		[ -e "$dst" ] || [ -L "$dst" ] && rm -f "$dst"
+		printf '%s' "$generated" > "$dst"
+		echo "  gen  $dst"
+	fi
+}
+
 remove_harness() {
 	local harness="$1"
 	echo "Removing harness: $harness"
@@ -32,9 +46,10 @@ remove_harness() {
 		unlink "$HOME_DIR/.pi/agent/skills/wiki-ops" 2>/dev/null || true
 		;;
 	claude-code)
-		unlink "$HOME_DIR/.claude/CLAUDE.md" 2>/dev/null || true
-		unlink "$HOME_DIR/.claude/settings.json" 2>/dev/null || true
+		rm -f "$HOME_DIR/.claude/CLAUDE.md" 2>/dev/null || true
+		rm -f "$HOME_DIR/.claude/settings.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.claude/skills/llm-wiki" 2>/dev/null || true
+		unlink "$HOME_DIR/.claude/context-mode" 2>/dev/null || true
 		;;
 	copilot)
 		unlink "$HOME_DIR/.github/copilot-instructions.md" 2>/dev/null || true
@@ -105,10 +120,18 @@ echo ""
 
 if [ -d "$HOME_DIR/.claude" ]; then
 	echo "Wiring claude-code..."
-	link "$REPO/harnesses/claude-code/CLAUDE.md" "$HOME_DIR/.claude/CLAUDE.md"
-	link "$REPO/harnesses/claude-code/settings.json" "$HOME_DIR/.claude/settings.json"
+	generate_file "$REPO/harnesses/claude-code/CLAUDE.md" "$HOME_DIR/.claude/CLAUDE.md"
+	generate_file "$REPO/harnesses/claude-code/settings.json" "$HOME_DIR/.claude/settings.json"
 	link "$REPO/harnesses/claude-code/statusline.sh" "$HOME_DIR/.claude/statusline.sh"
 	link "$HOME_DIR/repos/llm-wiki" "$HOME_DIR/.claude/skills/llm-wiki"
+	if command -v context-mode &>/dev/null; then
+		CM_PKG_DIR="$(dirname "$(realpath "$(which context-mode)")")"
+		if [ -d "${CM_PKG_DIR}/.claude-plugin" ]; then
+			link "${CM_PKG_DIR}/.claude-plugin" "$HOME_DIR/.claude/context-mode"
+		fi
+	else
+		echo "  SKIP context-mode — not installed (npm install -g context-mode)"
+	fi
 else
 	echo "  SKIP claude-code — ~/.claude not found"
 fi

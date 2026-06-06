@@ -21,7 +21,6 @@ command = "context-mode hook vscode-copilot sessionstart"
 
 [harnesses.claude-code]
 verify_dir = "~/.claude/context-mode"
-manual_setup = "/plugin marketplace add mksglu/context-mode"
 
 [harnesses.copilot]
 symlinks = [["harnesses/copilot/hooks/context-mode.json", "~/.github/hooks/context-mode.json"]]

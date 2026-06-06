@@ -164,4 +164,4 @@ Edit the skill there; `bootstrap.sh` symlinks propagate changes to all harnesses
 <!-- /block: llm-wiki -->
 
 The full wiki-ops skill is loaded via:
-@/Users/smcolby/repos/llm-config/shared/skills/wiki-ops/SKILL.md
+@__REPO__/shared/skills/wiki-ops/SKILL.md
