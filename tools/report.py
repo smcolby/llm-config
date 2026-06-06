@@ -41,6 +41,9 @@ HARNESS_LIVE_INSTR = {
 
 # Generated files that bootstrap.sh produces via template substitution (not symlinks)
 GENERATED_MAP: dict[str, list[Path]] = {
+    "pi": [
+        HOME / ".pi/agent/settings.json",
+    ],
     "claude-code": [
         HOME / ".claude/CLAUDE.md",
         HOME / ".claude/settings.json",
@@ -52,7 +55,6 @@ GENERATED_MAP: dict[str, list[Path]] = {
 SYMLINK_MAP = {
     "pi": [
         (REPO / "harnesses/pi/AGENTS.md", HOME / ".pi/agent/AGENTS.md"),
-        (REPO / "harnesses/pi/settings.json", HOME / ".pi/agent/settings.json"),
         (REPO / "harnesses/pi/models.json", HOME / ".pi/agent/models.json"),
         (REPO / "harnesses/pi/mcp.json", HOME / ".pi/agent/mcp.json"),
     ],

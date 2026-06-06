@@ -13,7 +13,7 @@ AI coding assistants each read behavioral instructions from their own config fil
 See `pattern.md` for the full design, decision record, and usage scenarios. Key decisions:
 
 - **Composition over generation** — harness files are human-readable; sync only touches fenced regions
-- **Symlinks, not copies** — what's committed is what's deployed
+- **Symlinks for most files, generated files for machine-specific ones** — files containing absolute paths are rendered from templates by bootstrap.sh with placeholder substitution; everything else is symlinked directly so `git diff` reflects what's deployed
 - **Blocks are universal or they are not blocks** — no per-harness block variants
 - **Agents are rendered** — frontmatter differs per harness; bodies do not
 - **Skills live in `shared/skills/`** — general-purpose skills are authored here; symlinks deploy them to all harnesses
@@ -205,9 +205,7 @@ Then complete the checklist bootstrap prints:
 | Step | File | What to change |
 |------|------|----------------|
 | Ollama host | `shared/models/ollama.json` | Update `baseUrl` from `http://loki.local:11434` to this machine's address |
-| Prompt path | `harnesses/pi/settings.json` | Update `prompts` absolute path — should be `~/repos/llm-config/harnesses/pi/agents` |
 | Pi auth | `~/.pi/agent/auth.json` | Create with API keys (never committed) |
-| Extensions | (printed by bootstrap) | One-time per-harness setup for each extension (e.g., plugin installs) |
 
 ---
 
@@ -312,12 +310,12 @@ The `rtk` block is the canonical example of a correctly shared block: RTK suppor
 | Live path | Source in repo |
 |-----------|----------------|
 | `~/.pi/agent/AGENTS.md` | `harnesses/pi/AGENTS.md` |
-| `~/.pi/agent/settings.json` | `harnesses/pi/settings.json` |
+| `~/.pi/agent/settings.json` | generated from `harnesses/pi/settings.json` (`__REPO__` substituted by bootstrap.sh) |
 | `~/.pi/agent/models.json` | `shared/models/ollama.json` (via `harnesses/pi/models.json` → `shared/models/ollama.json`) |
 | `~/.pi/agent/claude-bridge.json` | `harnesses/pi/claude-bridge.json` |
 | `~/.pi/agent/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
-| `~/.claude/CLAUDE.md` | `harnesses/claude-code/CLAUDE.md` |
-| `~/.claude/settings.json` | `harnesses/claude-code/settings.json` |
+| `~/.claude/CLAUDE.md` | generated from `harnesses/claude-code/CLAUDE.md` (`__REPO__` substituted by bootstrap.sh) |
+| `~/.claude/settings.json` | generated from `harnesses/claude-code/settings.json` (`__HOME__` substituted by bootstrap.sh) |
 | `~/.claude/skills/llm-wiki` | `~/repos/llm-wiki` (plugin: Stop hook + health-check.sh) |
 | `~/.github/copilot-instructions.md` | `harnesses/copilot/copilot-instructions.md` |
 | `~/.github/hooks/rtk.json` | `harnesses/copilot/hooks/rtk.json` *(generated)* |

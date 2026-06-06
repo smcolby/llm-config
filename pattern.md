@@ -17,7 +17,7 @@ This pattern solves it by keeping shared content in a single source and making a
 ## Guiding principles
 
 1. **Shared content is the canonical source.** Harness-specific files are either generated from shared content or composed by wrapping shared blocks in harness-specific scaffolding. Never edit a harness file to change something that should be universal.
-2. **Harness files are deployed directly via symlink.** What's committed is what's live. `git diff` on the repo always reflects the current state of your actual config.
+2. **Harness files are deployed via symlink or template generation.** Most files are symlinked directly — what's committed is what's live. Files that must contain machine-specific absolute paths (e.g., skill directories, statusline commands) are generated from templates by `bootstrap.sh` using placeholder substitution, keeping those paths out of the committed source.
 3. **Composition over generation.** Harness markdown files are readable, editable documents. Shared content is embedded inside fenced block markers. `sync.py` guards the fenced regions against drift rather than regenerating whole files from opaque templates.
 4. **Agents are rendered, not symlinked.** Because agent frontmatter differs per harness (Copilot adds `model` and `tools`; pi omits them), agent files are rendered by `sync.py` from a canonical shared body. The rendered files live in the repo and are symlinked into place.
 5. **Harness-specific sections are first-class.** Things that only make sense in one harness (pi skill routing, Copilot tool declarations, Claude Code `@`-include syntax) are kept in the harness layer and are never touched by sync. The verify tool knows to ignore them.
@@ -229,7 +229,7 @@ REPO=~/repos/llm-config
 
 **MCP configs are committed and symlinked** for harnesses whose configs are token-free (e.g. pi and Copilot). `bootstrap.sh` symlinks them like any other harness file. The one exception is `~/.claude.json`, which Claude Code manages itself and may contain tokens — it is gitignored and never committed.
 
-**Machine-specific values** (server addresses, absolute paths) must be edited by hand after bootstrap. They are not templated — templating them would require a separate rendering step and break the "symlinked files are live files" principle. `bootstrap.sh` prints a checklist of required manual steps.
+**Machine-specific values** fall into two categories. Absolute paths embedded in config files (e.g., a `prompts` directory path, a statusline command path) are handled via placeholder substitution: the committed file contains a placeholder (`__REPO__` or `__HOME__`), and `bootstrap.sh` generates the live file with the placeholder replaced. These files are generated rather than symlinked. Other machine-specific values (e.g., a remote server's hostname in a model config) cannot be inferred and must be edited by hand after bootstrap. `bootstrap.sh` prints a checklist of any remaining manual steps.
 
 ---
 
@@ -410,9 +410,7 @@ Shared blocks, skills, and agent bodies are untouched. The remaining harnesses c
 2. Run `./tools/bootstrap.sh` — creates all symlinks, wires extension symlinks, reports what needs manual attention.
 3. Edit machine-specific values by hand (bootstrap prints a checklist):
    - `shared/models/ollama.json` — update Ollama `baseUrl` to this machine's address
-   - `harnesses/pi/settings.json` — update absolute `prompts` path if it differs
    - Copy `~/.pi/agent/auth.json` from backup or recreate with API keys (never committed)
-   - Complete the one-time extension setup steps printed by bootstrap (e.g., plugin installs)
 4. Run `python tools/verify.py` — confirms no drift was introduced during setup.
 
 Machine-specific values are never committed and never synced. The repo is the config; the machine is the runtime. Bootstrap bridges the two.
@@ -524,6 +522,6 @@ For someone implementing this pattern from scratch, or restoring to a completely
 
 ## Non-goals
 
-- **No config file generation from templates.** Harness JSON/YAML files are edited directly. Only markdown instruction blocks and agent bodies are synced.
+- **No general config file generation from templates.** Harness JSON/YAML files are edited directly and committed as-is. The narrow exception is files containing machine-specific absolute paths: those use placeholder substitution in `bootstrap.sh` so the committed source stays path-free. Only markdown instruction blocks and agent bodies are synced across harnesses.
 - **No runtime injection.** This is a static file management system. There is no daemon watching for changes.
 - **No secrets management.** `auth.json`, API keys, and tokens are excluded from the repo via `.gitignore` and documented in `README.md` as manual steps.

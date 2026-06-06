@@ -39,7 +39,7 @@ remove_harness() {
 	case "$harness" in
 	pi)
 		unlink "$HOME_DIR/.pi/agent/AGENTS.md" 2>/dev/null || true
-		unlink "$HOME_DIR/.pi/agent/settings.json" 2>/dev/null || true
+		rm -f "$HOME_DIR/.pi/agent/settings.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.pi/agent/models.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.pi/agent/mcp.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.pi/agent/extensions/rtk.ts" 2>/dev/null || true
@@ -107,7 +107,7 @@ echo ""
 if [ -d "$HOME_DIR/.pi/agent" ]; then
 	echo "Wiring pi..."
 	link "$REPO/harnesses/pi/AGENTS.md" "$HOME_DIR/.pi/agent/AGENTS.md"
-	link "$REPO/harnesses/pi/settings.json" "$HOME_DIR/.pi/agent/settings.json"
+	generate_file "$REPO/harnesses/pi/settings.json" "$HOME_DIR/.pi/agent/settings.json"
 	link "$REPO/harnesses/pi/models.json" "$HOME_DIR/.pi/agent/models.json"
 	link "$REPO/harnesses/pi/mcp.json" "$HOME_DIR/.pi/agent/mcp.json"
 	wire_skill "wiki-ops"
@@ -159,11 +159,10 @@ echo ""
 
 echo "=== Manual steps required ==="
 echo "  1. Edit shared/models/ollama.json — update Ollama baseUrl to this machine's address"
-echo "  2. Edit harnesses/pi/settings.json — update 'prompts' absolute path if needed"
-echo "  3. Create ~/.pi/agent/auth.json with API keys (never committed)"
+echo "  2. Create ~/.pi/agent/auth.json with API keys (never committed)"
 echo "  (Extension-specific one-time setup printed above)"
 if [ -z "${OLLAMA_HOST:-}" ]; then
-	echo "  4. Add 'export OLLAMA_HOST=http://loki.local:11434' to your shell profile so 'ollama launch claude' routes to loki.local"
+	echo "  3. Add 'export OLLAMA_HOST=http://loki.local:11434' to your shell profile so 'ollama launch claude' routes to loki.local"
 fi
 echo ""
 echo "Run 'python tools/verify.py' to confirm congruence."

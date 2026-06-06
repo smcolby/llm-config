@@ -4,7 +4,7 @@
   "defaultModel": "qwen3.6:35b-a3b-iq3",
   "defaultThinkingLevel": "high",
   "prompts": [
-    "/Users/smcolby/repos/llm-config/harnesses/pi/agents"
+    "__REPO__/harnesses/pi/agents"
   ],
   "packages": [
     "npm:context-mode",
