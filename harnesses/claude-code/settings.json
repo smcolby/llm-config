@@ -27,5 +27,9 @@
   },
   "autoMemoryEnabled": false,
   "theme": "dark",
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/smcolby/.claude/statusline.sh"
+  }
 }

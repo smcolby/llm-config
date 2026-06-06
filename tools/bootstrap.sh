@@ -109,6 +109,7 @@ if [ -d "$HOME_DIR/.claude" ]; then
 	echo "Wiring claude-code..."
 	link "$REPO/harnesses/claude-code/CLAUDE.md" "$HOME_DIR/.claude/CLAUDE.md"
 	link "$REPO/harnesses/claude-code/settings.json" "$HOME_DIR/.claude/settings.json"
+	link "$REPO/harnesses/claude-code/statusline.sh" "$HOME_DIR/.claude/statusline.sh"
 	link "$HOME_DIR/repos/llm-wiki" "$HOME_DIR/.claude/skills/llm-wiki"
 else
 	echo "  SKIP claude-code — ~/.claude not found"
