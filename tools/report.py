@@ -47,14 +47,9 @@ SYMLINK_MAP = {
         (REPO / "harnesses/pi/settings.json", HOME / ".pi/agent/settings.json"),
         (REPO / "harnesses/pi/models.json", HOME / ".pi/agent/models.json"),
         (REPO / "harnesses/pi/mcp.json", HOME / ".pi/agent/mcp.json"),
-        (
-            REPO / "harnesses/pi/claude-bridge.json",
-            HOME / ".pi/agent/claude-bridge.json",
-        ),
     ],
     "claude-code": [
         (REPO / "harnesses/claude-code/CLAUDE.md", HOME / ".claude/CLAUDE.md"),
-        (REPO / "harnesses/claude-code/RTK.md", HOME / ".claude/RTK.md"),
         (REPO / "harnesses/claude-code/settings.json", HOME / ".claude/settings.json"),
     ],
     "copilot": [

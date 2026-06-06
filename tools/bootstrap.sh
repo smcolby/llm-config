@@ -28,7 +28,6 @@ remove_harness() {
 		unlink "$HOME_DIR/.pi/agent/settings.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.pi/agent/models.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.pi/agent/mcp.json" 2>/dev/null || true
-		unlink "$HOME_DIR/.pi/agent/claude-bridge.json" 2>/dev/null || true
 		unlink "$HOME_DIR/.pi/agent/extensions/rtk.ts" 2>/dev/null || true
 		unlink "$HOME_DIR/.pi/agent/skills/wiki-ops" 2>/dev/null || true
 		;;
@@ -96,7 +95,6 @@ if [ -d "$HOME_DIR/.pi/agent" ]; then
 	link "$REPO/harnesses/pi/settings.json" "$HOME_DIR/.pi/agent/settings.json"
 	link "$REPO/harnesses/pi/models.json" "$HOME_DIR/.pi/agent/models.json"
 	link "$REPO/harnesses/pi/mcp.json" "$HOME_DIR/.pi/agent/mcp.json"
-	link "$REPO/harnesses/pi/claude-bridge.json" "$HOME_DIR/.pi/agent/claude-bridge.json"
 	wire_skill "wiki-ops"
 else
 	echo "  SKIP pi — ~/.pi/agent not found"
