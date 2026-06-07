@@ -3,12 +3,15 @@
   "defaultProvider": "ollama",
   "defaultModel": "qwen3.6:35b-a3b-iq3",
   "defaultThinkingLevel": "high",
+  "powerline": {
+    "preset": "vaporwave"
+  },
   "prompts": [
     "__REPO__/harnesses/pi/agents"
   ],
   "packages": [
     "npm:context-mode",
     "npm:@ollama/pi-web-search",
-    "npm:pi-powerline-footer"
+    "git:github.com/smcolby/pi-powerline-footer"
   ]
 }
