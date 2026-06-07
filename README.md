@@ -215,7 +215,8 @@ Then complete the checklist bootstrap prints:
 |------|--------|
 | `~/.pi/agent/auth.json` | API keys |
 | `harnesses/*/auth.json` | API keys |
-| `~/.pi/agent/npm/` | Installed packages (like node_modules) |
+| `~/.pi/agent/npm/` | npm-installed pi packages (like node_modules) |
+| `~/.pi/agent/git/` | git-installed pi packages (e.g. `git:github.com/smcolby/pi-powerline-footer`) |
 | `~/.pi/agent/sessions/` | Ephemeral session data |
 | `~/.claude.json` | MCP config — managed by Claude Code, may contain tokens |
 | `harnesses/_deprecated/` | Archived harnesses — kept locally, gitignored |
@@ -316,6 +317,7 @@ The `rtk` block is the canonical example of a correctly shared block: RTK suppor
 | `~/.pi/agent/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 | `~/.claude/CLAUDE.md` | generated from `harnesses/claude-code/CLAUDE.md` (`__REPO__` substituted by bootstrap.sh) |
 | `~/.claude/settings.json` | generated from `harnesses/claude-code/settings.json` (`__HOME__` substituted by bootstrap.sh) |
+| `~/.claude/statusline.sh` | `harnesses/claude-code/statusline.sh` |
 | `~/.claude/skills/llm-wiki` | `~/repos/llm-wiki` (plugin: Stop hook + health-check.sh) |
 | `~/.github/copilot-instructions.md` | `harnesses/copilot/copilot-instructions.md` |
 | `~/.github/hooks/rtk.json` | `harnesses/copilot/hooks/rtk.json` *(generated)* |
