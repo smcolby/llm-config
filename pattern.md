@@ -279,10 +279,11 @@ REPO=~/repos/llm-config
 
 Without a congruence check, drift is invisible. The natural workflow — refining instructions while actively working in a specific harness — means you regularly improve one harness's config directly. Without a tool to detect when those improvements diverge from the shared source, the divergence just accumulates silently. Two harnesses start behaving differently for no intentional reason, and you can't tell from the files themselves when the split happened or whether it was deliberate.
 
-`verify.py` makes drift a visible, actionable state rather than a silent one. It checks two things:
+`verify.py` makes drift a visible, actionable state rather than a silent one. It checks three things:
 
 1. **Block congruence:** every `<!-- block: name -->` fence in every harness file matches `shared/blocks/{name}.md` verbatim (after normalizing trailing whitespace).
 2. **Agent congruence:** the body of every rendered agent file in `harnesses/{harness}/agents/` matches `shared/agents/{name}.md` verbatim (excluding frontmatter lines).
+3. **Manifest-derived files:** the generated hook JSON, pi extension stubs, and aggregated MCP configs match what `shared/extensions/*.toml` declares (via `wire_extensions.py --check`).
 
 Exit codes:
 - `0` — all harnesses are in sync
@@ -339,7 +340,7 @@ Harness-specific sections are always shown and never cause a non-zero exit — t
 2. Commit — no sync needed
 
 **To add a new agent/persona:**
-1. Write `shared/agents/my-agent.md` (body only; `description:` as the first line)
+1. Write `shared/agents/my-agent.md` with YAML frontmatter (`name` + `description`) followed by the body
 2. Run `python tools/sync.py --agents --apply`
 3. Commit the shared source + all rendered harness files together
 
