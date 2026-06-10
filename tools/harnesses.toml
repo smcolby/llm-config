@@ -1,0 +1,79 @@
+# Harness registry — the single source of truth for harness topology.
+# Read by registry.py on behalf of sync.py, report.py, and bootstrap.py.
+#
+# Per-harness keys:
+#   root              directory whose presence means the harness is installed
+#   instruction_file  repo-relative path to the composed instruction file
+#   instruction_live  live path the harness reads instructions from
+#   skill_dir         harness skill directory (shared skills are linked here)
+#   symlinks          [repo-relative source, live destination] pairs
+#   generated         like symlinks, but the live file is rendered from the
+#                     source with placeholder substitution (__REPO__, __HOME__)
+#   [harnesses.<h>.agents]  frontmatter rendering rules for shared/agents/
+#
+# Adding a harness: add an entry here, add block fences to its instruction
+# file, then run bootstrap.py and sync.py --apply.
+# Dropping a harness: python tools/bootstrap.py --remove <name>, then delete
+# its entry here.
+
+# shared skills wired into every harness that declares a skill_dir
+skills = ["wiki-ops"]
+
+[harnesses.pi]
+root = "~/.pi/agent"
+instruction_file = "harnesses/pi/AGENTS.md"
+instruction_live = "~/.pi/agent/AGENTS.md"
+skill_dir = "~/.pi/agent/skills"
+symlinks = [
+    ["harnesses/pi/AGENTS.md", "~/.pi/agent/AGENTS.md"],
+    ["harnesses/pi/models.json", "~/.pi/agent/models.json"],
+    ["harnesses/pi/mcp.json", "~/.pi/agent/mcp.json"],
+]
+generated = [
+    ["harnesses/pi/settings.json", "~/.pi/agent/settings.json"],
+]
+
+[harnesses.pi.agents]
+filename_suffix = ".md"
+# pi frontmatter: description only (name/model/tools are not used)
+include_fields = ["description"]
+
+[harnesses.claude-code]
+root = "~/.claude"
+instruction_file = "harnesses/claude-code/CLAUDE.md"
+instruction_live = "~/.claude/CLAUDE.md"
+skill_dir = "~/.claude/skills"
+symlinks = [
+    ["harnesses/claude-code/CLAUDE.md", "~/.claude/CLAUDE.md"],
+    ["harnesses/claude-code/statusline.sh", "~/.claude/statusline.sh"],
+    ["harnesses/claude-code/agents", "~/.claude/agents"],
+]
+generated = [
+    ["harnesses/claude-code/settings.json", "~/.claude/settings.json"],
+]
+
+[harnesses.claude-code.agents]
+filename_suffix = ".md"
+# claude-code subagents: name + description (+ optional tools as comma-separated string)
+# model field is intentionally omitted so subagents inherit the session model
+include_fields = ["name", "description", "tools"]
+tools = "Read, Edit, Bash, Glob, Grep, Write"
+
+[harnesses.copilot]
+root = "~/.copilot"
+instruction_file = "harnesses/copilot/copilot-instructions.md"
+instruction_live = "~/.github/copilot-instructions.md"
+skill_dir = "~/.copilot/skills"
+symlinks = [
+    ["harnesses/copilot/copilot-instructions.md", "~/.github/copilot-instructions.md"],
+    ["harnesses/copilot/mcp-config.json", "~/.copilot/mcp-config.json"],
+    ["harnesses/copilot/agents", "~/.copilot/agents"],
+]
+generated = []
+
+[harnesses.copilot.agents]
+filename_suffix = ".agent.md"
+# copilot frontmatter: all fields
+include_fields = ["name", "description", "model", "tools"]
+model = "claude-sonnet-4-6"
+tools = ["read", "search", "edit", "execute"]

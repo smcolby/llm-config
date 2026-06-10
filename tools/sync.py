@@ -12,19 +12,18 @@ Usage:
 import argparse
 import re
 import sys
-import tomllib
 from pathlib import Path
 
-REPO = Path(__file__).parent.parent
+sys.path.insert(0, str(Path(__file__).parent))
+import registry  # noqa: E402
+
+REPO = registry.REPO
 BLOCKS_DIR = REPO / "shared/blocks"
 AGENTS_DIR = REPO / "shared/agents"
 HARNESSES_DIR = REPO / "harnesses"
-AGENT_CONFIG = REPO / "tools/harness_agent_config.toml"
 
 HARNESS_INSTRUCTION_FILES = {
-    "pi": HARNESSES_DIR / "pi/AGENTS.md",
-    "claude-code": HARNESSES_DIR / "claude-code/CLAUDE.md",
-    "copilot": HARNESSES_DIR / "copilot/copilot-instructions.md",
+    h: REPO / conf["instruction_file"] for h, conf in registry.harnesses().items()
 }
 
 FENCE_RE = re.compile(
@@ -86,15 +85,14 @@ def parse_shared_agent(path: Path):
 
 
 def check_agents(apply: bool, harness_filter: str | None = None) -> int:
-    with open(AGENT_CONFIG, "rb") as f:
-        config = tomllib.load(f)
+    agent_configs = registry.agent_configs()
 
     drift = 0
     for slug in sorted(AGENTS_DIR.glob("*.md")):
         fm, canonical_body = parse_shared_agent(slug)
         name = slug.stem
 
-        for harness, hconf in config.get("harnesses", {}).items():
+        for harness, hconf in agent_configs.items():
             if harness_filter and harness != harness_filter:
                 continue
             suffix = hconf["filename_suffix"]

@@ -21,12 +21,13 @@ from rich import box
 from rich.console import Console  # pip install rich
 from rich.table import Table
 
-# share drift collectors with wire_extensions.py (tools/ on sys.path)
+# share drift collectors and the registry with sibling tools (tools/ on sys.path)
 sys.path.insert(0, str(Path(__file__).parent))
+import registry  # noqa: E402
 import wire_extensions  # noqa: E402
 
-REPO = wire_extensions.REPO
-HOME = wire_extensions.HOME
+REPO = registry.REPO
+HOME = registry.HOME
 EXTENSIONS_DIR = wire_extensions.EXTENSIONS_DIR
 BLOCKS_DIR = REPO / "shared/blocks"
 AGENTS_DIR = REPO / "shared/agents"
@@ -34,52 +35,21 @@ MODELS_DIR = REPO / "shared/models"
 HARNESSES_DIR = REPO / "harnesses"
 LLM_WIKI_SRC = HOME / "repos/llm-wiki"
 LLM_WIKI_LINK = HOME / ".claude/skills/llm-wiki"
-AGENT_CONFIG = REPO / "tools/harness_agent_config.toml"
 
-# Per-harness wiring topology. One entry per harness, listing every bootstrap-managed
-# (src, dst) pair separated by kind. The instruction file is whichever entry in
-# `symlinks` or `generated` lands at the harness's expected instruction filename.
-#
-# Adding a harness: add a new entry here, then update bootstrap.sh (linking) and
-# tools/harness_agent_config.toml (if agent rendering applies).
+# Skill-dir entries that are external plugin links, not shared skills; they are
+# verified under "external sources" in HARNESS WIRING instead
+EXTERNAL_PLUGIN_LINKS = {"llm-wiki"}
+
+# Per-harness wiring topology, built from tools/harnesses.toml (see registry.py)
 HARNESS_WIRING: dict[str, dict] = {
-    "pi": {
-        "instruction_repo": HARNESSES_DIR / "pi/AGENTS.md",
-        "instruction_live": HOME / ".pi/agent/AGENTS.md",
-        "symlinks": [
-            (HARNESSES_DIR / "pi/AGENTS.md", HOME / ".pi/agent/AGENTS.md"),
-            (HARNESSES_DIR / "pi/models.json", HOME / ".pi/agent/models.json"),
-            (HARNESSES_DIR / "pi/mcp.json", HOME / ".pi/agent/mcp.json"),
-        ],
-        "generated": [
-            (HARNESSES_DIR / "pi/settings.json", HOME / ".pi/agent/settings.json"),
-        ],
-    },
-    "claude-code": {
-        "instruction_repo": HARNESSES_DIR / "claude-code/CLAUDE.md",
-        "instruction_live": HOME / ".claude/CLAUDE.md",
-        "symlinks": [
-            (HARNESSES_DIR / "claude-code/statusline.sh", HOME / ".claude/statusline.sh"),
-            (HARNESSES_DIR / "claude-code/agents", HOME / ".claude/agents"),
-        ],
-        "generated": [
-            (HARNESSES_DIR / "claude-code/CLAUDE.md", HOME / ".claude/CLAUDE.md"),
-            (HARNESSES_DIR / "claude-code/settings.json", HOME / ".claude/settings.json"),
-        ],
-    },
-    "copilot": {
-        "instruction_repo": HARNESSES_DIR / "copilot/copilot-instructions.md",
-        "instruction_live": HOME / ".github/copilot-instructions.md",
-        "symlinks": [
-            (
-                HARNESSES_DIR / "copilot/copilot-instructions.md",
-                HOME / ".github/copilot-instructions.md",
-            ),
-            (HARNESSES_DIR / "copilot/mcp-config.json", HOME / ".copilot/mcp-config.json"),
-            (HARNESSES_DIR / "copilot/agents", HOME / ".copilot/agents"),
-        ],
-        "generated": [],
-    },
+    h: {
+        "instruction_repo": REPO / conf["instruction_file"],
+        "instruction_live": registry.expand(conf["instruction_live"]),
+        "skill_dir": registry.expand(conf["skill_dir"]) if "skill_dir" in conf else None,
+        "symlinks": [(REPO / s, registry.expand(d)) for s, d in conf.get("symlinks", [])],
+        "generated": [(REPO / s, registry.expand(d)) for s, d in conf.get("generated", [])],
+    }
+    for h, conf in registry.harnesses().items()
 }
 
 HARNESS_FILES = {h: w["instruction_repo"] for h, w in HARNESS_WIRING.items()}
@@ -314,10 +284,9 @@ def inspect_agents(errors: list, warnings: list):
     """Rendered agent file presence per harness."""
     section("SHARED AGENTS  (rendered file presence per harness)")
 
-    with open(AGENT_CONFIG, "rb") as f:
-        config = tomllib.load(f)
+    agent_configs = registry.agent_configs()
 
-    harnesses = list(config["harnesses"].keys())
+    harnesses = list(agent_configs.keys())
     table = Table(box=box.SIMPLE_HEAD, padding=(0, 2), pad_edge=False, show_edge=False)
     table.add_column("agent", style="cyan")
     for h in harnesses:
@@ -327,7 +296,7 @@ def inspect_agents(errors: list, warnings: list):
         name = ap.stem
         row = [name]
         for h in harnesses:
-            hconf = config["harnesses"][h]
+            hconf = agent_configs[h]
             rendered = HARNESSES_DIR / h / "agents" / f"{name}{hconf['filename_suffix']}"
             if rendered.exists():
                 row.append("[green]✓[/green]")
@@ -349,20 +318,13 @@ def inspect_skills(errors: list, warnings: list):
     section("SKILLS")
     skills: dict[str, dict[str, Path]] = {}
 
-    for skill_dir, harness in [
-        (HOME / ".pi/agent/skills", "pi"),
-        (HOME / ".copilot/skills", "copilot"),
-    ]:
+    skill_dirs = {h: w["skill_dir"] for h, w in HARNESS_WIRING.items() if w["skill_dir"]}
+    for harness, skill_dir in skill_dirs.items():
         if skill_dir.exists():
             for item in sorted(skill_dir.iterdir()):
+                if item.name.startswith(".") or item.name in EXTERNAL_PLUGIN_LINKS:
+                    continue
                 skills.setdefault(item.name, {})[harness] = item
-
-    cc = HARNESS_FILES["claude-code"]
-    if cc.exists():
-        for line in cc.read_text().splitlines():
-            if line.startswith("@") and "SKILL.md" in line:
-                p = Path(line[1:].replace("__REPO__", str(REPO)))
-                skills.setdefault(p.parent.name, {})["claude-code"] = p
 
     if not skills:
         console.print("\n  [dim]no skills detected[/dim]")
@@ -371,7 +333,7 @@ def inspect_skills(errors: list, warnings: list):
     for skill_name, by_harness in sorted(skills.items()):
         console.print(f"\n  [bold cyan]{skill_name}[/bold cyan]")
 
-        for harness in HARNESS_FILES:
+        for harness in skill_dirs:
             if harness not in by_harness:
                 harness_row(harness, "[dim]not wired[/dim]")
                 warnings.append(f"skill '{skill_name}': not wired in {harness}")
@@ -379,13 +341,7 @@ def inspect_skills(errors: list, warnings: list):
 
             p = by_harness[harness]
 
-            if harness == "claude-code":
-                if p.exists():
-                    harness_row(harness, s_ok(f"@-include → {short(p)}"))
-                else:
-                    harness_row(harness, s_err(f"@-include target missing: {short(p)}"))
-                    errors.append(f"skill '{skill_name}': CC @-include target missing")
-            elif p.is_symlink():
+            if p.is_symlink():
                 link = os.readlink(p)
                 link_short = link.replace(str(HOME), "~")
                 if p.exists():
@@ -483,12 +439,12 @@ def inspect_harness_wiring(errors: list, warnings: list):
             if dst.exists() and not dst.is_symlink():
                 console.print(f"    {s_ok(short(dst), '(generated)')}")
             elif dst.is_symlink():
-                console.print(f"    {s_warn(short(dst), 'still a symlink — re-run bootstrap.sh')}")
+                console.print(f"    {s_warn(short(dst), 'still a symlink — re-run bootstrap.py')}")
                 warnings.append(
-                    f"generated file {short(dst)}: still a symlink, re-run bootstrap.sh"
+                    f"generated file {short(dst)}: still a symlink, re-run bootstrap.py"
                 )
             else:
-                console.print(f"    {s_err(f'{short(dst)}: not found — run bootstrap.sh')}")
+                console.print(f"    {s_err(f'{short(dst)}: not found — run bootstrap.py')}")
                 errors.append(f"generated file {short(dst)}: not found")
 
     # external-source symlinks (sources live outside this repo)
@@ -510,12 +466,8 @@ def inspect_harness_wiring(errors: list, warnings: list):
 # ── generated-file drift ──────────────────────────────────────────────────────
 
 
-def render_template(src: Path) -> str:
-    """Apply bootstrap.sh's placeholder substitutions to a template source."""
-    text = src.read_text()
-    text = text.replace("@__REPO__", f"@{REPO}")
-    text = text.replace("__HOME__", str(HOME))
-    return text
+# single substitution definition shared with bootstrap.py — see registry.py
+render_template = registry.render_template
 
 
 def _colored_diff(expected: str, actual: str, src: Path, dst: Path) -> list[str]:
@@ -551,7 +503,7 @@ def inspect_generated_drift(warnings: list):
             if not src.exists() or not dst.exists() or dst.is_symlink():
                 # missing / unrendered cases are reported in HARNESS WIRING above
                 continue
-            # bootstrap.sh strips trailing newlines via $(...); normalise both sides
+            # normalise trailing newlines on both sides
             expected = render_template(src).rstrip("\n")
             actual = dst.read_text().rstrip("\n")
             if expected == actual:
@@ -565,12 +517,12 @@ def inspect_generated_drift(warnings: list):
             console.print("    [dim]Resolve manually:[/dim]")
             console.print(
                 "    [dim]  • discard live changes, restore from template:[/dim]"
-                "  bash tools/bootstrap.sh"
+                "  python tools/bootstrap.py"
             )
             console.print(
                 f"    [dim]  • promote live values into template:[/dim]"
                 f"  edit {short(src)} (keep [italic]__HOME__[/italic] / "
-                f"[italic]@__REPO__[/italic] placeholders), then bash tools/bootstrap.sh"
+                f"[italic]__REPO__[/italic] placeholders), then python tools/bootstrap.py"
             )
             warnings.append(
                 f"generated file drift: {short(dst)} differs from rendered "

@@ -8,7 +8,8 @@ Reads shared/extensions/*.toml, then:
     and including it where the harness opts in via `mechanisms = [..., "mcp"]`
   - Creates symlinks declared in each manifest
 
-Called by bootstrap.sh. Pass --check to report drift without writing.
+Called by bootstrap.py. Pass --check to report drift without writing;
+--remove <harness> to unlink that harness's manifest-declared symlinks.
 """
 
 import argparse
@@ -234,10 +235,32 @@ def collect_mcp_drift() -> list[DriftEntry]:
     return result
 
 
+def remove_harness_links(harness: str) -> None:
+    """Unlink every manifest-declared symlink for one harness."""
+    for ext_file in sorted(EXTENSIONS_DIR.glob("*.toml")):
+        with open(ext_file, "rb") as f:
+            ext = tomllib.load(f)
+        hconf = ext.get("harnesses", {}).get(harness)
+        if hconf is None:
+            continue
+        for pair in hconf.get("symlinks", []):
+            dst = expand(pair[1])
+            if dst.is_symlink():
+                dst.unlink()
+                print(f"  unlink {dst}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="report drift without writing")
+    parser.add_argument(
+        "--remove", metavar="HARNESS", help="unlink manifest-declared symlinks for one harness"
+    )
     args = parser.parse_args()
+
+    if args.remove:
+        remove_harness_links(args.remove)
+        return
 
     if args.check:
         print("Checking generated files...")
