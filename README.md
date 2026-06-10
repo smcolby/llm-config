@@ -13,7 +13,8 @@ AI coding assistants each read behavioral instructions from their own config fil
 See `pattern.md` for the full design, decision record, and usage scenarios. Key decisions:
 
 - **Composition over generation** — harness files are human-readable; sync only touches fenced regions
-- **Symlinks for most files, generated files for machine-specific ones** — files containing absolute paths are rendered from templates by bootstrap.sh with placeholder substitution; everything else is symlinked directly so `git diff` reflects what's deployed
+- **One registry for harness topology** — `tools/harnesses.toml` declares every harness's instruction file, symlinks, generated files, skill directory, and agent frontmatter rules; sync, report, and bootstrap all read it
+- **Symlinks for most files, generated files for machine-specific ones** — files containing absolute paths are rendered from templates by bootstrap.py with placeholder substitution; everything else is symlinked directly so `git diff` reflects what's deployed
 - **Blocks are universal or they are not blocks** — no per-harness block variants
 - **Agents are rendered** — frontmatter differs per harness; bodies do not
 - **Skills live in `shared/skills/`** — general-purpose skills are authored here; symlinks deploy them to all harnesses
@@ -32,7 +33,7 @@ Harness instruction files (`AGENTS.md`, `CLAUDE.md`, `copilot-instructions.md`) 
 <!-- /block: code-style -->
 ```
 
-`tools/sync.py` keeps the fenced regions identical to their sources in `shared/blocks/`. Rather than generating harness files wholesale from templates — which would overwrite harness-specific content on every sync — fencing lets sync touch only the shared regions while leaving each harness file otherwise intact and human-readable. Agent/persona files are rendered from `shared/agents/` with harness-appropriate frontmatter. All harness files are symlinked into their live locations by `tools/bootstrap.sh` — what's in the repo is what's deployed.
+`tools/sync.py` keeps the fenced regions identical to their sources in `shared/blocks/`. Rather than generating harness files wholesale from templates — which would overwrite harness-specific content on every sync — fencing lets sync touch only the shared regions while leaving each harness file otherwise intact and human-readable. Agent/persona files are rendered from `shared/agents/` with harness-appropriate frontmatter. All harness files are symlinked into their live locations by `tools/bootstrap.py`, driven by the registry in `tools/harnesses.toml` — what's in the repo is what's deployed.
 
 ---
 
@@ -50,11 +51,12 @@ harnesses/
   claude-code/     # Claude Code harness: CLAUDE.md, settings.json
   copilot/         # Copilot CLI harness: copilot-instructions.md, mcp-config.json, hooks/, agents/
 tools/
+  harnesses.toml           # Harness registry — single source of harness topology
+  registry.py              # Registry loader + the one placeholder-substitution function
   sync.py                  # Drift detection and block/agent propagation
   verify.py                # Congruence tests — exits non-zero on drift
-  bootstrap.sh             # One-time (idempotent) symlink setup
-  wire_extensions.py       # Extension symlink wiring (called by bootstrap.sh)
-  harness_agent_config.toml  # Per-harness agent frontmatter rules
+  bootstrap.py             # Idempotent wiring: symlinks, generated files, skills, extensions
+  wire_extensions.py       # Extension file generation and wiring (called by bootstrap.py)
 pattern.md         # Full design rationale and decision record
 ```
 
@@ -99,11 +101,10 @@ git add -A && git commit -m "..."
 ### Add a new skill
 
 ```bash
-# 1. write the skill (or locate it in its source repo)
-# 2. wire it into pi and copilot
-tools/bootstrap.sh --skill <skill-name>
-
-# 3. add @-include to harnesses/claude-code/CLAUDE.md pointing at SKILL.md
+# 1. write shared/skills/<name>/SKILL.md with YAML frontmatter (name + description)
+# 2. add the skill name to the `skills` list in tools/harnesses.toml
+# 3. wire it into every harness skill directory
+python tools/bootstrap.py --skill <skill-name>
 
 # 4. add a shared block with the activation hint
 $EDITOR shared/blocks/<skill-name>.md
@@ -131,7 +132,7 @@ $EDITOR shared/blocks/<name>.md
 python tools/sync.py --apply
 
 # 5. run bootstrap to create extension symlinks
-bash tools/bootstrap.sh
+python tools/bootstrap.py
 
 python tools/verify.py
 git add -A && git commit -m "..."
@@ -176,8 +177,9 @@ git add -A && git commit -m "..."
 ### Drop a harness
 
 ```bash
-tools/bootstrap.sh --remove <harness>   # unlinks symlinks, archives harnesses/<harness>/
-# remove harness from tools/harness_agent_config.toml
+python tools/bootstrap.py --remove <harness>   # unlinks everything (registry + extension
+                                               # manifests), archives harnesses/<harness>/
+# delete the harness entry from tools/harnesses.toml
 python tools/verify.py
 git add -A && git commit -m "Remove <harness> harness"
 ```
@@ -185,16 +187,16 @@ git add -A && git commit -m "Remove <harness> harness"
 ### Fresh machine setup
 
 ```bash
-# 1. install harnesses — Claude Code, pi, and Copilot CLI must exist before bootstrap
-#    Claude Code:  https://claude.ai/download (installs ~/.claude/)
-#    pi:           https://pi.ai/download      (installs ~/.pi/)
-#    Copilot CLI:  https://github.com/github/copilot-cli-for-beginners
+# 1. install harnesses — each must exist before bootstrap can wire into it
+npm install -g @anthropic-ai/claude-code            # Claude Code (~/.claude/)
+npm install -g @earendil-works/pi-coding-agent      # pi (~/.pi/)
+npm install -g @github/copilot                      # Copilot CLI (~/.copilot/)
 
 # 2. clone this repo and any external skill repos
 git clone git@github.com:smcolby/llm-config.git ~/repos/llm-config
 
 # 3. wire everything
-bash ~/repos/llm-config/tools/bootstrap.sh   # symlinks everything, prints a manual-steps checklist
+python ~/repos/llm-config/tools/bootstrap.py   # symlinks everything, prints a manual-steps checklist
 
 # 4. install pre-commit hooks
 pip install pre-commit && pre-commit install
@@ -225,17 +227,17 @@ Then complete the checklist bootstrap prints:
 
 ## Skills
 
-General-purpose skills live in `shared/skills/<name>/SKILL.md` and are symlinked into each harness by `bootstrap.sh`.
+General-purpose skills live in `shared/skills/<name>/SKILL.md`, are declared in the `skills` list in `tools/harnesses.toml`, and are symlinked into each harness's skill directory by `bootstrap.py`.
 
 | Skill | Source | Wired to |
 |-------|--------|----------|
-| `wiki-ops` | `shared/skills/wiki-ops/` | `~/.pi/agent/skills/wiki-ops/`, `~/.copilot/skills/wiki-ops/` |
+| `wiki-ops` | `shared/skills/wiki-ops/` | `~/.pi/agent/skills/wiki-ops/`, `~/.claude/skills/wiki-ops/`, `~/.copilot/skills/wiki-ops/` |
 
-To add a skill: write `shared/skills/<name>/SKILL.md`, add a `<!-- block: <name> -->` activation hint in `shared/blocks/`, run `bootstrap.sh --skill <name>` and `sync.py --apply`.
+To add a skill: write `shared/skills/<name>/SKILL.md` (with `name` + `description` frontmatter), add it to the `skills` list in `tools/harnesses.toml`, add a `<!-- block: <name> -->` activation hint in `shared/blocks/`, run `bootstrap.py --skill <name>` and `sync.py --apply`.
 
 To update a skill: edit `shared/skills/<name>/SKILL.md` directly — symlinks deploy the change instantly, no sync step needed.
 
-For domain-specific skills tightly coupled to a single project, the skill can live in that project's repo and be registered in `bootstrap.sh` as an external source. See `pattern.md` for the decision rule.
+For domain-specific skills tightly coupled to a single project, the skill can live in that project's repo and be registered in `bootstrap.py` as an external source. See `pattern.md` for the decision rule.
 
 ## Extensions
 
@@ -319,26 +321,29 @@ The `rtk` block is the canonical example of a correctly shared block: RTK suppor
 
 ## Symlink map (reference)
 
+Harness wiring is declared in `tools/harnesses.toml`; extension wiring in `shared/extensions/*.toml`. The table below is the rendered result. *(generated)* marks repo files rendered from extension manifests by `wire_extensions.py`.
+
 | Live path | Source in repo |
 |-----------|----------------|
 | `~/.pi/agent/AGENTS.md` | `harnesses/pi/AGENTS.md` |
-| `~/.pi/agent/settings.json` | generated from `harnesses/pi/settings.json` (`__REPO__` substituted by bootstrap.sh) |
+| `~/.pi/agent/settings.json` | generated from `harnesses/pi/settings.json` (`__REPO__` substituted by bootstrap.py) |
 | `~/.pi/agent/models.json` | `shared/models/ollama.json` (via `harnesses/pi/models.json` → `shared/models/ollama.json`) |
 | `~/.pi/agent/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
-| `~/.claude/CLAUDE.md` | generated from `harnesses/claude-code/CLAUDE.md` (`__REPO__` substituted by bootstrap.sh) |
-| `~/.claude/settings.json` | generated from `harnesses/claude-code/settings.json` (`__HOME__` substituted by bootstrap.sh) |
+| `~/.claude/CLAUDE.md` | `harnesses/claude-code/CLAUDE.md` |
+| `~/.claude/settings.json` | generated from `harnesses/claude-code/settings.json` (`__HOME__` substituted by bootstrap.py) |
 | `~/.claude/statusline.sh` | `harnesses/claude-code/statusline.sh` |
 | `~/.claude/agents` | `harnesses/claude-code/agents` |
+| `~/.claude/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 | `~/.claude/skills/llm-wiki` | `~/repos/llm-wiki` (plugin: Stop hook + health-check.sh) |
 | `~/.github/copilot-instructions.md` | `harnesses/copilot/copilot-instructions.md` |
 | `~/.github/hooks/rtk.json` | `harnesses/copilot/hooks/rtk.json` *(generated)* |
-| `~/.github/hooks/context-mode.json` | `harnesses/copilot/hooks/context-mode.json` |
+| `~/.github/hooks/context-mode.json` | `harnesses/copilot/hooks/context-mode.json` *(generated)* |
 | `~/.github/hooks/wiki-ops.json` | `harnesses/copilot/hooks/wiki-ops.json` *(generated)* |
 | `~/.copilot/mcp-config.json` | `harnesses/copilot/mcp-config.json` *(generated)* |
 | `~/.copilot/agents/` | `harnesses/copilot/agents/` |
+| `~/.copilot/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 | `~/.pi/agent/mcp.json` | `harnesses/pi/mcp.json` |
 | `~/.pi/agent/extensions/rtk.ts` | `harnesses/pi/extensions/rtk.ts` |
 | `~/.pi/agent/extensions/wiki-ops.ts` | `harnesses/pi/extensions/wiki-ops.ts` *(generated)* |
-| `~/.copilot/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 
 
