@@ -46,7 +46,7 @@ shared/
   extensions/      # Extension manifests — one TOML per globally installed tool
   models/          # Shared model provider configs — each *.json symlinked into harnesses that support it; companion *.toml declares which harnesses apply
 harnesses/
-  pi/              # Pi harness: AGENTS.md, settings.json, models.json (→ shared), mcp.json, claude-bridge.json, extensions/, agents/
+  pi/              # Pi harness: AGENTS.md, settings.json, models.json (→ shared), mcp.json, extensions/, agents/
   claude-code/     # Claude Code harness: CLAUDE.md, settings.json
   copilot/         # Copilot CLI harness: copilot-instructions.md, mcp-config.json, hooks/, agents/
 tools/
@@ -288,10 +288,21 @@ pre-commit install         # installs .pre-commit-config.yaml hooks into .git/ho
 ## System inspection
 
 ```bash
-python tools/report.py   # full topology: blocks, agents, skills, symlinks, harness-specific sections
+python tools/report.py   # full topology: blocks, agents, skills, models, MCP, manifest drift, wiring, generated-file drift
 ```
 
-Prints every shared component and how it manifests per harness, verifies all symlinks and wiring, and surfaces harness-specific content for gap analysis. Exits non-zero if any hard check fails (broken symlink, missing render, dangling skill). Requires `rich`: `pip install rich`.
+Prints every shared component and how it manifests per harness, verifies all symlinks and wiring, and surfaces harness-specific content for gap analysis. Sections covered:
+
+- **EXTENSIONS** — manifest → per-harness wiring (hooks, symlinks, verify checks)
+- **SHARED BLOCKS / AGENTS / SKILLS** — what's authored vs how each harness sees it
+- **SHARED MODELS** — provider configs and which harnesses consume them
+- **MCP SERVERS** — every server in `shared/mcp-servers.toml` and its registration in each target harness's live MCP config
+- **MANIFEST-DERIVED FILES** — drift between `shared/extensions/*.toml` + `shared/mcp-servers.toml` and the repo files they render to (same check as `wire_extensions.py --check`)
+- **HARNESS WIRING** — bootstrap-managed symlinks + generated files; surfaces missing/dangling state
+- **GENERATED FILE DRIFT** — live files written by bootstrap from templates vs. the rendered template, with unified diff and resolution instructions; warnings only (manual reconciliation)
+- **HARNESS-SPECIFIC SECTIONS** — diagnostic view of content outside block fences in each harness instruction file
+
+Exits non-zero on hard failures (broken symlink, missing render, dangling skill). Generated-file drift is a warning. Requires `rich`: `pip install rich`.
 
 ---
 
@@ -313,11 +324,11 @@ The `rtk` block is the canonical example of a correctly shared block: RTK suppor
 | `~/.pi/agent/AGENTS.md` | `harnesses/pi/AGENTS.md` |
 | `~/.pi/agent/settings.json` | generated from `harnesses/pi/settings.json` (`__REPO__` substituted by bootstrap.sh) |
 | `~/.pi/agent/models.json` | `shared/models/ollama.json` (via `harnesses/pi/models.json` → `shared/models/ollama.json`) |
-| `~/.pi/agent/claude-bridge.json` | `harnesses/pi/claude-bridge.json` |
 | `~/.pi/agent/skills/wiki-ops/` | `shared/skills/wiki-ops/` |
 | `~/.claude/CLAUDE.md` | generated from `harnesses/claude-code/CLAUDE.md` (`__REPO__` substituted by bootstrap.sh) |
 | `~/.claude/settings.json` | generated from `harnesses/claude-code/settings.json` (`__HOME__` substituted by bootstrap.sh) |
 | `~/.claude/statusline.sh` | `harnesses/claude-code/statusline.sh` |
+| `~/.claude/agents` | `harnesses/claude-code/agents` |
 | `~/.claude/skills/llm-wiki` | `~/repos/llm-wiki` (plugin: Stop hook + health-check.sh) |
 | `~/.github/copilot-instructions.md` | `harnesses/copilot/copilot-instructions.md` |
 | `~/.github/hooks/rtk.json` | `harnesses/copilot/hooks/rtk.json` *(generated)* |

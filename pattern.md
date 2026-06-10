@@ -93,12 +93,12 @@ Agent files cannot be symlinked wholesale because their frontmatter schemas diff
 
 Each file in `shared/agents/` has minimal YAML frontmatter (`name:` and `description:`) followed by the harness-agnostic body. `sync.py` reads the frontmatter fields it needs and discards the rest when rendering harness files. Frontmatter rendered into each harness:
 
-| Field | pi | Copilot CLI |
-|-------|-----|-------------|
-| `description` | yes | yes |
-| `name` | no | yes |
-| `model` | no | yes |
-| `tools` | no | yes |
+| Field | pi | Copilot CLI | Claude Code |
+|-------|-----|-------------|-------------|
+| `description` | yes | yes | yes |
+| `name` | no | yes | yes |
+| `model` | no | yes | no (inherits session model) |
+| `tools` | no | yes (YAML list) | yes (comma-separated string) |
 
 A thin per-harness config (`tools/harness_agent_config.toml`) controls which fields appear and what values to use for static fields:
 
@@ -112,6 +112,11 @@ filename_suffix = ".agent.md"
 include_fields = ["name", "description", "model", "tools"]
 model = "claude-sonnet-4-6"
 tools = ["read", "search", "edit", "execute"]
+
+[harnesses.claude-code]
+filename_suffix = ".md"
+include_fields = ["name", "description", "tools"]
+tools = "Read, Edit, Bash, Glob, Grep, Write"
 ```
 
 `sync.py --agents` reads `shared/agents/*.md`, renders each to `harnesses/{harness}/agents/`, and reports drift. The rendered files are committed to the repo so the diff is always visible.
@@ -195,6 +200,7 @@ Supported verify check types (one per harness, checked by `report.py`):
 - `verify_hook`: substring to find in a PreToolUse hook command in the Claude Code settings
 - `verify_dir`: directory path to check for existence (used for plugin installs)
 - `verify_mcp`: path to an MCP config file to check for server registration
+- `verify_pi_package`: package identifier (e.g. `npm:context-mode`) to find in `harnesses/pi/settings.json` `packages[]`
 
 **`wire_extensions.py`** reads all manifests and `shared/mcp-servers.toml`, then:
 1. Generates copilot hook JSON files and pi TypeScript stubs from `[[hooks]]` entries
@@ -261,11 +267,14 @@ Pre-commit hooks (configured in `.pre-commit-config.yaml`) run `verify.py` along
 `verify.py` guards against content drift but says nothing about whether the live system is actually wired. A block can be byte-for-byte correct in the repo and still not be deployed if its instruction file's symlink is broken. A skill can be defined and never linked. Without a tool to surface the live state, the gap between *what the repo says* and *what's actually running* is invisible.
 
 `report.py` provides a human-readable view of the full system topology at any point in time. It shows:
-- Every shared block, which harnesses include it as a fence, and whether the instruction file is correctly symlinked to its live location
-- Every shared agent, which harnesses have a rendered file, and a note for harnesses with no native agent format
+- Every shared block, which harnesses include it as a fence, and whether the instruction file is correctly symlinked or generated into its live location
+- Every shared agent, which harnesses have a rendered file
 - Every detected skill, whether its symlinks are valid and non-dangling, and the live target path
 - Every shared model config, which harnesses have a symlink to it, and which harnesses are explicitly excluded (e.g. cloud-only harnesses that can't use local model routing)
-- All bootstrap-managed symlinks and their states
+- Every MCP server declared in `shared/mcp-servers.toml`, and whether each target harness's live MCP config actually registers it
+- Drift between manifest sources (`shared/extensions/*.toml`, `shared/mcp-servers.toml`) and the per-harness files they render to in the repo (same check as `wire_extensions.py --check`)
+- All bootstrap-managed symlinks and generated files, plus their wiring status
+- Drift between bootstrap-generated live files (with placeholders resolved) and the rendered template — surfaced as a warning with a unified diff and manual-resolution instructions
 - Harness-specific content outside block fences, per harness — the primary gap-analysis surface for identifying functionality that exists in one harness but not others
 
 Run it with:
@@ -274,7 +283,7 @@ python tools/report.py
 ```
 
 Exit codes:
-- `0` — all hard checks passed (symlinks valid, renders present, skill targets exist)
+- `0` — all hard checks passed (symlinks valid, renders present, skill targets exist); generated-file drift is a warning, not an error, and does not affect exit status
 - `1` — at least one hard check failed; details printed inline
 
 Harness-specific sections are always shown and never cause a non-zero exit — they are diagnostic, not errors. The intent is to make intentional per-harness differences visible so you can decide whether to promote them to shared blocks or leave them as deliberate divergence.
@@ -373,10 +382,9 @@ An agent can own steps 3–5 entirely: *"Wire up the wiki-ops skill across all h
 2. Run `python tools/sync.py --agents --apply` — renders:
    - `harnesses/pi/agents/scientist.md` (pi frontmatter: `description` only)
    - `harnesses/copilot/agents/scientist.agent.md` (Copilot frontmatter: `description`, `name`, `model`, `tools`)
+   - `harnesses/claude-code/agents/scientist.md` (Claude Code subagent frontmatter: `name`, `description`, `tools` as a comma-separated string)
 3. Run `python tools/verify.py` — confirms rendered bodies match the canonical source.
-4. Commit. The rendered files are in `harnesses/pi/agents/` and `harnesses/copilot/agents/`, which are referenced directly from each harness's config and immediately available.
-
-Claude Code has no native agent file format. The persona is available to CC via the pi bridge (`/agent scientist` in a pi session running CC as provider), or by referencing the shared body as a system prompt. If CC gains a native agent format, add it to `harness_agent_config.toml` and re-run sync.
+4. Commit. The rendered files are in `harnesses/{pi,copilot,claude-code}/agents/`, which each harness reads directly: pi via its `prompts` path, Copilot via `~/.copilot/agents` symlink, Claude Code via `~/.claude/agents` symlink.
 
 **Single file authored:** `shared/agents/scientist.md`
 **Commands:** `sync.py --agents --apply` → `verify.py`
