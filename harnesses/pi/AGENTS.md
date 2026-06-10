@@ -184,7 +184,7 @@ Wiki repos live at `~/repos/llm-wiki/` (or any directory whose `AGENTS.md`
 references this pattern).
 
 The skill source of truth is `~/repos/llm-config/shared/skills/wiki-ops/SKILL.md`.
-Edit the skill there; `bootstrap.sh` symlinks propagate changes to all harnesses automatically.
+Edit the skill there; `bootstrap.py` symlinks propagate changes to all harnesses automatically.
 <!-- /block: llm-wiki -->
 
 To start wiki work in any session: `/skill:wiki-ops` — load ingest / query / lint workflows.
