@@ -9,6 +9,11 @@ agent/auth.json
 # OS
 .DS_Store
 
+# Python build artifacts
+__pycache__/
+*.pyc
+.ruff_cache/
+
 # Editor
 .vscode/
 .idea/
