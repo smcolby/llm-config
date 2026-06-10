@@ -9,6 +9,7 @@ Usage:
   python tools/report.py
 """
 
+import difflib
 import json
 import os
 import re
@@ -18,13 +19,20 @@ from pathlib import Path
 
 from rich.console import Console  # pip install rich
 
-REPO = Path(__file__).parent.parent
-HOME = Path.home()
+# share drift collectors with wire_extensions.py (tools/ on sys.path)
+sys.path.insert(0, str(Path(__file__).parent))
+import wire_extensions  # noqa: E402
+
+REPO = wire_extensions.REPO
+HOME = wire_extensions.HOME
+EXTENSIONS_DIR = wire_extensions.EXTENSIONS_DIR
+MCP_MANIFEST = wire_extensions.MCP_MANIFEST
 BLOCKS_DIR = REPO / "shared/blocks"
 AGENTS_DIR = REPO / "shared/agents"
 MODELS_DIR = REPO / "shared/models"
-EXTENSIONS_DIR = REPO / "shared/extensions"
 HARNESSES_DIR = REPO / "harnesses"
+LLM_WIKI_SRC = HOME / "repos/llm-wiki"
+LLM_WIKI_LINK = HOME / ".claude/skills/llm-wiki"
 AGENT_CONFIG = REPO / "tools/harness_agent_config.toml"
 
 HARNESS_FILES = {
@@ -39,14 +47,15 @@ HARNESS_LIVE_INSTR = {
     "copilot": HOME / ".github/copilot-instructions.md",
 }
 
-# Generated files that bootstrap.sh produces via template substitution (not symlinks)
-GENERATED_MAP: dict[str, list[Path]] = {
+# Generated files that bootstrap.sh produces via template substitution (not symlinks).
+# Each entry is (template source, live destination).
+GENERATED_MAP: dict[str, list[tuple[Path, Path]]] = {
     "pi": [
-        HOME / ".pi/agent/settings.json",
+        (HARNESSES_DIR / "pi/settings.json", HOME / ".pi/agent/settings.json"),
     ],
     "claude-code": [
-        HOME / ".claude/CLAUDE.md",
-        HOME / ".claude/settings.json",
+        (HARNESSES_DIR / "claude-code/CLAUDE.md", HOME / ".claude/CLAUDE.md"),
+        (HARNESSES_DIR / "claude-code/settings.json", HOME / ".claude/settings.json"),
     ],
 }
 
@@ -58,7 +67,9 @@ SYMLINK_MAP = {
         (REPO / "harnesses/pi/models.json", HOME / ".pi/agent/models.json"),
         (REPO / "harnesses/pi/mcp.json", HOME / ".pi/agent/mcp.json"),
     ],
-    "claude-code": [],
+    "claude-code": [
+        (REPO / "harnesses/claude-code/statusline.sh", HOME / ".claude/statusline.sh"),
+    ],
     "copilot": [
         (
             REPO / "harnesses/copilot/copilot-instructions.md",
@@ -288,7 +299,9 @@ def inspect_blocks(errors: list, warnings: list):
                     sym_s = s_ok(short(live), "(generated)")
                 elif live.is_symlink():
                     sym_s = s_warn(short(live), "still a symlink — re-run bootstrap.sh")
-                    warnings.append(f"generated file {short(live)}: still a symlink, re-run bootstrap.sh")
+                    warnings.append(
+                        f"generated file {short(live)}: still a symlink, re-run bootstrap.sh"
+                    )
                 else:
                     sym_s = s_err(f"{short(live)}: not found — run bootstrap.sh")
                     errors.append(f"generated file {short(live)}: not found")
@@ -452,11 +465,11 @@ def inspect_models(errors: list, warnings: list):
             warnings.append(f"shared model '{model_file.name}': no harness symlinks found")
 
 
-# ── symlinks ──────────────────────────────────────────────────────────────────
+# ── harness wiring (symlinks + generated files) ───────────────────────────────
 
 
-def inspect_symlinks(errors: list, warnings: list):
-    section("SYMLINKS")
+def inspect_harness_wiring(errors: list, warnings: list):
+    section("HARNESS WIRING  (symlinks + generated files)")
 
     all_harnesses = sorted(set(list(SYMLINK_MAP) + list(GENERATED_MAP)))
     for harness in all_harnesses:
@@ -468,15 +481,191 @@ def inspect_symlinks(errors: list, warnings: list):
             else:
                 console.print(f"    {s_err(f'{short(dst)}: {msg}')}")
                 errors.append(f"symlink {short(dst)}: {msg}")
-        for dst in GENERATED_MAP.get(harness, []):
+        for _src, dst in GENERATED_MAP.get(harness, []):
             if dst.exists() and not dst.is_symlink():
-                console.print(f"    {s_ok(short(dst), '(generated)')}")
+                console.print(f"    {s_ok(short(dst), '(generated; content checked below)')}")
             elif dst.is_symlink():
                 console.print(f"    {s_warn(short(dst), 'still a symlink — re-run bootstrap.sh')}")
-                warnings.append(f"generated file {short(dst)}: still a symlink, re-run bootstrap.sh")
+                warnings.append(
+                    f"generated file {short(dst)}: still a symlink, re-run bootstrap.sh"
+                )
             else:
                 console.print(f"    {s_err(f'{short(dst)}: not found — run bootstrap.sh')}")
                 errors.append(f"generated file {short(dst)}: not found")
+
+    # external-source symlinks (sources live outside this repo)
+    console.print("\n  [bold]external sources[/bold]")
+    if LLM_WIKI_SRC.exists():
+        ok_flag, msg = check_symlink(LLM_WIKI_SRC, LLM_WIKI_LINK)
+        if ok_flag:
+            console.print(f"    {s_ok(short(LLM_WIKI_LINK), f'→ {short(LLM_WIKI_SRC)}')}")
+        else:
+            console.print(f"    {s_err(f'{short(LLM_WIKI_LINK)}: {msg}')}")
+            errors.append(f"symlink {short(LLM_WIKI_LINK)}: {msg}")
+    else:
+        console.print(
+            f"    [dim]—  {short(LLM_WIKI_LINK)}: source {short(LLM_WIKI_SRC)} "
+            f"not cloned on this machine[/dim]"
+        )
+
+
+# ── generated-file drift ──────────────────────────────────────────────────────
+
+
+def render_template(src: Path) -> str:
+    """Apply bootstrap.sh's placeholder substitutions to a template source."""
+    text = src.read_text()
+    text = text.replace("@__REPO__", f"@{REPO}")
+    text = text.replace("__HOME__", str(HOME))
+    return text
+
+
+def _colored_diff(expected: str, actual: str, src: Path, dst: Path) -> list[str]:
+    diff = difflib.unified_diff(
+        expected.splitlines(),
+        actual.splitlines(),
+        fromfile=f"template (rendered): {short(src)}",
+        tofile=f"live: {short(dst)}",
+        n=1,
+        lineterm="",
+    )
+    out: list[str] = []
+    for line in diff:
+        if line.startswith(("+++", "---")):
+            out.append(f"[bold]{line}[/bold]")
+        elif line.startswith("@@"):
+            out.append(f"[cyan]{line}[/cyan]")
+        elif line.startswith("+"):
+            out.append(f"[green]{line}[/green]")
+        elif line.startswith("-"):
+            out.append(f"[red]{line}[/red]")
+        else:
+            out.append(f"[dim]{line}[/dim]")
+    return out
+
+
+def inspect_generated_drift(warnings: list):
+    section("GENERATED FILE DRIFT  (live vs rendered template)")
+
+    any_drift = False
+    for harness in sorted(GENERATED_MAP):
+        for src, dst in GENERATED_MAP[harness]:
+            if not src.exists() or not dst.exists() or dst.is_symlink():
+                # missing / unrendered cases are reported in HARNESS WIRING above
+                continue
+            # bootstrap.sh strips trailing newlines via $(...); normalise both sides
+            expected = render_template(src).rstrip("\n")
+            actual = dst.read_text().rstrip("\n")
+            if expected == actual:
+                continue
+
+            any_drift = True
+            console.print(f"\n  [bold cyan]{harness}[/bold cyan]  ·  {short(dst)}")
+            for line in _colored_diff(expected, actual, src, dst):
+                console.print(f"    {line}")
+            console.print()
+            console.print("    [dim]Resolve manually:[/dim]")
+            console.print(
+                "    [dim]  • discard live changes, restore from template:[/dim]"
+                "  bash tools/bootstrap.sh"
+            )
+            console.print(
+                f"    [dim]  • promote live values into template:[/dim]"
+                f"  edit {short(src)} (keep [italic]__HOME__[/italic] / "
+                f"[italic]@__REPO__[/italic] placeholders), then bash tools/bootstrap.sh"
+            )
+            warnings.append(
+                f"generated file drift: {short(dst)} differs from rendered "
+                f"{short(src)} — manual reconciliation required"
+            )
+
+    if not any_drift:
+        console.print("\n  [green]✓  no drift between live files and rendered templates[/green]")
+
+
+# ── manifest-derived files ────────────────────────────────────────────────────
+
+
+def inspect_manifest_drift(errors: list, warnings: list):
+    section("MANIFEST-DERIVED FILES  (manifest → repo)")
+
+    entries = wire_extensions.collect_hooks_drift() + wire_extensions.collect_mcp_drift()
+    if not entries:
+        console.print("\n  [dim]no manifest-derived files[/dim]")
+        return
+
+    by_source: dict[Path, list[wire_extensions.DriftEntry]] = {}
+    for e in entries:
+        by_source.setdefault(e.source, []).append(e)
+
+    any_issue = False
+    for source in sorted(by_source, key=lambda p: str(p)):
+        console.print(f"\n  [bold cyan]{short(source)}[/bold cyan]")
+        for e in by_source[source]:
+            if e.status == "ok":
+                console.print(f"    {s_ok(short(e.path))}")
+            elif e.status == "drift":
+                any_issue = True
+                console.print(f"    {s_warn(short(e.path), 'drift — manifest and file differ')}")
+                warnings.append(
+                    f"manifest drift: {short(e.path)} out of sync with {short(e.source)}"
+                )
+            else:  # missing
+                any_issue = True
+                console.print(f"    {s_err(f'{short(e.path)}: missing')}")
+                errors.append(f"manifest-derived file missing: {short(e.path)}")
+
+    if any_issue:
+        console.print("\n    [dim]Resolve: python tools/wire_extensions.py[/dim]")
+
+
+# ── MCP servers ───────────────────────────────────────────────────────────────
+
+
+def inspect_mcp_servers(errors: list, warnings: list):
+    section("MCP SERVERS  (shared/mcp-servers.toml)")
+
+    if not MCP_MANIFEST.exists():
+        console.print("\n  [dim]no MCP manifest[/dim]")
+        return
+
+    with open(MCP_MANIFEST, "rb") as f:
+        manifest = tomllib.load(f)
+
+    servers = manifest.get("servers", {})
+    if not servers:
+        console.print("\n  [dim]no servers declared[/dim]")
+        return
+
+    # map harness → live MCP config path (where registration is checked)
+    live_configs = {
+        "copilot": HOME / ".copilot/mcp-config.json",
+        "pi": HOME / ".pi/agent/mcp.json",
+    }
+
+    for name, conf in sorted(servers.items()):
+        console.print(f"\n  [bold cyan]{name}[/bold cyan]")
+        targets = conf.get("harnesses", [])
+        if not targets:
+            console.print("    [dim]no harnesses declared[/dim]")
+            warnings.append(f"MCP server '{name}': no harnesses declared in manifest")
+            continue
+
+        for harness in targets:
+            live = live_configs.get(harness)
+            if live is None:
+                harness_row(harness, s_warn(f"no live MCP config path known for {harness}"))
+                continue
+            if not live.exists():
+                harness_row(harness, s_err(f"{short(live)} not found"))
+                errors.append(f"MCP server '{name}' ({harness}): live config {short(live)} missing")
+                continue
+            registered = name in _load_json(live).get("mcpServers", {})
+            if registered:
+                harness_row(harness, s_ok(f"registered in {short(live)}"))
+            else:
+                harness_row(harness, s_err(f"not registered in {short(live)}"))
+                errors.append(f"MCP server '{name}' ({harness}): not registered in {short(live)}")
 
 
 # ── harness-specific ──────────────────────────────────────────────────────────
@@ -529,7 +718,10 @@ def main():
     inspect_agents(errors, warnings)
     inspect_skills(errors, warnings)
     inspect_models(errors, warnings)
-    inspect_symlinks(errors, warnings)
+    inspect_mcp_servers(errors, warnings)
+    inspect_manifest_drift(errors, warnings)
+    inspect_harness_wiring(errors, warnings)
+    inspect_generated_drift(warnings)
     inspect_harness_specific()
 
     section("SUMMARY")

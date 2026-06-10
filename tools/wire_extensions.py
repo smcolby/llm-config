@@ -15,6 +15,16 @@ import json
 import os
 import tomllib
 from pathlib import Path
+from typing import NamedTuple
+
+
+class DriftEntry(NamedTuple):
+    """A manifest-derived file with its current drift status."""
+
+    path: Path  # the generated file in the repo
+    source: Path  # the manifest it was rendered from
+    status: str  # "ok" | "missing" | "drift"
+
 
 REPO = Path(__file__).parent.parent
 HOME = Path.home()
@@ -72,12 +82,21 @@ def _write_if_changed(path: Path, content: str, label: str) -> None:
         print(f"  gen  {label}")
 
 
+def _status_of(path: Path, content: str) -> str:
+    if not path.exists():
+        return "missing"
+    if path.read_text() != content:
+        return "drift"
+    return "ok"
+
+
 def _check_content(path: Path, content: str, label: str) -> int:
     """Return 1 if file is missing or differs from content, 0 if clean."""
-    if not path.exists():
+    status = _status_of(path, content)
+    if status == "missing":
         print(f"  MISSING  {label}")
         return 1
-    if path.read_text() != content:
+    if status == "drift":
         print(f"  DRIFT    {label}")
         return 1
     return 0
@@ -172,6 +191,43 @@ def generate_mcp(check: bool) -> int:
         else:
             _write_if_changed(path, content, label)
     return drift
+
+
+def collect_hooks_drift() -> list[DriftEntry]:
+    """Return drift status for every hook/extension file derived from shared/extensions/*.toml."""
+    result: list[DriftEntry] = []
+    for ext_file in sorted(EXTENSIONS_DIR.glob("*.toml")):
+        with open(ext_file, "rb") as f:
+            ext = tomllib.load(f)
+        hooks = ext.get("hooks", [])
+        if not hooks:
+            continue
+        stem = ext_file.stem
+
+        copilot_content = _copilot_hooks_json(hooks)
+        if copilot_content is not None:
+            path = REPO / f"harnesses/copilot/hooks/{stem}.json"
+            result.append(DriftEntry(path, ext_file, _status_of(path, copilot_content)))
+
+        pi_content = _pi_ts(stem, hooks)
+        if pi_content is not None:
+            path = REPO / f"harnesses/pi/extensions/{stem}.ts"
+            result.append(DriftEntry(path, ext_file, _status_of(path, pi_content)))
+
+    return result
+
+
+def collect_mcp_drift() -> list[DriftEntry]:
+    """Return drift status for every harness MCP config rendered from shared/mcp-servers.toml."""
+    if not MCP_MANIFEST.exists():
+        return []
+    with open(MCP_MANIFEST, "rb") as f:
+        manifest = tomllib.load(f)
+    result: list[DriftEntry] = []
+    for _harness, path in MCP_PATHS.items():
+        content = _mcp_content(_harness, manifest)
+        result.append(DriftEntry(path, MCP_MANIFEST, _status_of(path, content)))
+    return result
 
 
 def main() -> None:
