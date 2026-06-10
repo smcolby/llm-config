@@ -35,50 +35,56 @@ LLM_WIKI_SRC = HOME / "repos/llm-wiki"
 LLM_WIKI_LINK = HOME / ".claude/skills/llm-wiki"
 AGENT_CONFIG = REPO / "tools/harness_agent_config.toml"
 
-HARNESS_FILES = {
-    "pi": HARNESSES_DIR / "pi/AGENTS.md",
-    "claude-code": HARNESSES_DIR / "claude-code/CLAUDE.md",
-    "copilot": HARNESSES_DIR / "copilot/copilot-instructions.md",
+# Per-harness wiring topology. One entry per harness, listing every bootstrap-managed
+# (src, dst) pair separated by kind. The instruction file is whichever entry in
+# `symlinks` or `generated` lands at the harness's expected instruction filename.
+#
+# Adding a harness: add a new entry here, then update bootstrap.sh (linking) and
+# tools/harness_agent_config.toml (if agent rendering applies).
+HARNESS_WIRING: dict[str, dict] = {
+    "pi": {
+        "instruction_repo": HARNESSES_DIR / "pi/AGENTS.md",
+        "instruction_live": HOME / ".pi/agent/AGENTS.md",
+        "symlinks": [
+            (HARNESSES_DIR / "pi/AGENTS.md", HOME / ".pi/agent/AGENTS.md"),
+            (HARNESSES_DIR / "pi/models.json", HOME / ".pi/agent/models.json"),
+            (HARNESSES_DIR / "pi/mcp.json", HOME / ".pi/agent/mcp.json"),
+        ],
+        "generated": [
+            (HARNESSES_DIR / "pi/settings.json", HOME / ".pi/agent/settings.json"),
+        ],
+    },
+    "claude-code": {
+        "instruction_repo": HARNESSES_DIR / "claude-code/CLAUDE.md",
+        "instruction_live": HOME / ".claude/CLAUDE.md",
+        "symlinks": [
+            (HARNESSES_DIR / "claude-code/statusline.sh", HOME / ".claude/statusline.sh"),
+            (HARNESSES_DIR / "claude-code/agents", HOME / ".claude/agents"),
+        ],
+        "generated": [
+            (HARNESSES_DIR / "claude-code/CLAUDE.md", HOME / ".claude/CLAUDE.md"),
+            (HARNESSES_DIR / "claude-code/settings.json", HOME / ".claude/settings.json"),
+        ],
+    },
+    "copilot": {
+        "instruction_repo": HARNESSES_DIR / "copilot/copilot-instructions.md",
+        "instruction_live": HOME / ".github/copilot-instructions.md",
+        "symlinks": [
+            (
+                HARNESSES_DIR / "copilot/copilot-instructions.md",
+                HOME / ".github/copilot-instructions.md",
+            ),
+            (HARNESSES_DIR / "copilot/mcp-config.json", HOME / ".copilot/mcp-config.json"),
+            (HARNESSES_DIR / "copilot/agents", HOME / ".copilot/agents"),
+        ],
+        "generated": [],
+    },
 }
 
-HARNESS_LIVE_INSTR = {
-    "pi": HOME / ".pi/agent/AGENTS.md",
-    "claude-code": HOME / ".claude/CLAUDE.md",
-    "copilot": HOME / ".github/copilot-instructions.md",
-}
-
-# Generated files that bootstrap.sh produces via template substitution (not symlinks).
-# Each entry is (template source, live destination).
-GENERATED_MAP: dict[str, list[tuple[Path, Path]]] = {
-    "pi": [
-        (HARNESSES_DIR / "pi/settings.json", HOME / ".pi/agent/settings.json"),
-    ],
-    "claude-code": [
-        (HARNESSES_DIR / "claude-code/CLAUDE.md", HOME / ".claude/CLAUDE.md"),
-        (HARNESSES_DIR / "claude-code/settings.json", HOME / ".claude/settings.json"),
-    ],
-}
-
-# Symlinks that bootstrap.sh is responsible for creating (core harness wiring only;
-# extension symlinks are defined in shared/extensions/*.toml and managed by wire_extensions.py)
-SYMLINK_MAP = {
-    "pi": [
-        (REPO / "harnesses/pi/AGENTS.md", HOME / ".pi/agent/AGENTS.md"),
-        (REPO / "harnesses/pi/models.json", HOME / ".pi/agent/models.json"),
-        (REPO / "harnesses/pi/mcp.json", HOME / ".pi/agent/mcp.json"),
-    ],
-    "claude-code": [
-        (REPO / "harnesses/claude-code/statusline.sh", HOME / ".claude/statusline.sh"),
-    ],
-    "copilot": [
-        (
-            REPO / "harnesses/copilot/copilot-instructions.md",
-            HOME / ".github/copilot-instructions.md",
-        ),
-        (REPO / "harnesses/copilot/mcp-config.json", HOME / ".copilot/mcp-config.json"),
-        (REPO / "harnesses/copilot/agents", HOME / ".copilot/agents"),
-    ],
-}
+HARNESS_FILES = {h: w["instruction_repo"] for h, w in HARNESS_WIRING.items()}
+HARNESS_LIVE_INSTR = {h: w["instruction_live"] for h, w in HARNESS_WIRING.items()}
+SYMLINK_MAP = {h: w["symlinks"] for h, w in HARNESS_WIRING.items()}
+GENERATED_MAP = {h: w["generated"] for h, w in HARNESS_WIRING.items()}
 
 FENCE_RE = re.compile(
     r"<!-- block: (?P<name>[\w-]+) -->\n.*?<!-- /block: (?P=name) -->",
@@ -337,11 +343,6 @@ def inspect_agents(errors: list, warnings: list):
                     s_err(f"{short(rendered)}  [dim](run sync.py --agents --apply)[/dim]"),
                 )
                 errors.append(f"agent '{name}': rendered file missing in {harness}")
-
-        harness_row(
-            "claude-code",
-            "[dim]no native agent format — use a /skill for persona invocation[/dim]",
-        )
 
 
 # ── skills ────────────────────────────────────────────────────────────────────

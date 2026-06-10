@@ -12,3 +12,10 @@ filename_suffix = ".agent.md"
 include_fields = ["name", "description", "model", "tools"]
 model = "claude-sonnet-4-6"
 tools = ["read", "search", "edit", "execute"]
+
+[harnesses.claude-code]
+filename_suffix = ".md"
+# claude-code subagents: name + description (+ optional tools as comma-separated string)
+# model field is intentionally omitted so subagents inherit the session model
+include_fields = ["name", "description", "tools"]
+tools = "Read, Edit, Bash, Glob, Grep, Write"

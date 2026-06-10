@@ -48,8 +48,10 @@ remove_harness() {
 	claude-code)
 		rm -f "$HOME_DIR/.claude/CLAUDE.md" 2>/dev/null || true
 		rm -f "$HOME_DIR/.claude/settings.json" 2>/dev/null || true
+		unlink "$HOME_DIR/.claude/statusline.sh" 2>/dev/null || true
 		unlink "$HOME_DIR/.claude/skills/llm-wiki" 2>/dev/null || true
 		unlink "$HOME_DIR/.claude/context-mode" 2>/dev/null || true
+		unlink "$HOME_DIR/.claude/agents" 2>/dev/null || true
 		;;
 	copilot)
 		unlink "$HOME_DIR/.github/copilot-instructions.md" 2>/dev/null || true
@@ -123,6 +125,7 @@ if [ -d "$HOME_DIR/.claude" ]; then
 	generate_file "$REPO/harnesses/claude-code/CLAUDE.md" "$HOME_DIR/.claude/CLAUDE.md"
 	generate_file "$REPO/harnesses/claude-code/settings.json" "$HOME_DIR/.claude/settings.json"
 	link "$REPO/harnesses/claude-code/statusline.sh" "$HOME_DIR/.claude/statusline.sh"
+	link "$REPO/harnesses/claude-code/agents" "$HOME_DIR/.claude/agents"
 	link "$HOME_DIR/repos/llm-wiki" "$HOME_DIR/.claude/skills/llm-wiki"
 	if command -v context-mode &>/dev/null; then
 		CM_PKG_DIR="$(dirname "$(realpath "$(which context-mode)")")"
