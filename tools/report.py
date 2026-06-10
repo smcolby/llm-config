@@ -17,7 +17,9 @@ import sys
 import tomllib
 from pathlib import Path
 
+from rich import box
 from rich.console import Console  # pip install rich
+from rich.table import Table
 
 # share drift collectors with wire_extensions.py (tools/ on sys.path)
 sys.path.insert(0, str(Path(__file__).parent))
@@ -278,71 +280,74 @@ def inspect_extensions(errors: list, warnings: list):
 
 
 def inspect_blocks(errors: list, warnings: list):
-    section("SHARED BLOCKS")
+    """Block fence presence per harness. Instruction file wiring is checked in HARNESS WIRING."""
+    section("SHARED BLOCKS  (fence presence per harness)")
+
+    harnesses = list(HARNESS_FILES.keys())
+    fence_text = {
+        h: HARNESS_FILES[h].read_text() if HARNESS_FILES[h].exists() else None for h in harnesses
+    }
+    for h, text in fence_text.items():
+        if text is None:
+            errors.append(f"{h}: instruction file not found at {short(HARNESS_FILES[h])}")
+
+    table = Table(box=box.SIMPLE_HEAD, padding=(0, 2), pad_edge=False, show_edge=False)
+    table.add_column("block", style="cyan")
+    for h in harnesses:
+        table.add_column(h, justify="center")
 
     for bp in sorted(BLOCKS_DIR.glob("*.md")):
         name = bp.stem
-        console.print(f"\n  [bold cyan]{name}[/bold cyan]")
-
-        for harness, instr in HARNESS_FILES.items():
-            if not instr.exists():
-                harness_row(harness, s_err("instruction file not found"))
-                errors.append(f"block '{name}': {harness} instruction file not found")
+        row = [name]
+        for h in harnesses:
+            text = fence_text[h]
+            if text is None:
+                row.append("[red]?[/red]")
                 continue
-
-            has_fence = bool(re.search(rf"<!-- block: {re.escape(name)} -->", instr.read_text()))
-            live = HARNESS_LIVE_INSTR[harness]
-
-            fence_s = (
-                s_ok("fence") if has_fence else s_warn("no fence", "not included in this harness")
-            )
-            if not has_fence:
-                warnings.append(f"block '{name}': not included in {harness}")
-
-            if harness == "claude-code":
-                # CLAUDE.md is a generated file (not a symlink) — bootstrap.sh resolves placeholders
-                if live.exists() and not live.is_symlink():
-                    sym_s = s_ok(short(live), "(generated)")
-                elif live.is_symlink():
-                    sym_s = s_warn(short(live), "still a symlink — re-run bootstrap.sh")
-                    warnings.append(
-                        f"generated file {short(live)}: still a symlink, re-run bootstrap.sh"
-                    )
-                else:
-                    sym_s = s_err(f"{short(live)}: not found — run bootstrap.sh")
-                    errors.append(f"generated file {short(live)}: not found")
+            has_fence = bool(re.search(rf"<!-- block: {re.escape(name)} -->", text))
+            if has_fence:
+                row.append("[green]✓[/green]")
             else:
-                sym_ok, sym_msg = check_symlink(instr, live)
-                sym_s = s_ok(short(live)) if sym_ok else s_err(f"{short(live)}: {sym_msg}")
-                if not sym_ok:
-                    errors.append(f"symlink broken: {short(live)} ({sym_msg})")
+                row.append("[yellow]—[/yellow]")
+                warnings.append(f"block '{name}': not included in {h}")
+        table.add_row(*row)
 
-            harness_row(harness, f"{fence_s}  ·  {sym_s}")
+    console.print(table)
 
 
 # ── agents ────────────────────────────────────────────────────────────────────
 
 
 def inspect_agents(errors: list, warnings: list):
-    section("SHARED AGENTS")
+    """Rendered agent file presence per harness."""
+    section("SHARED AGENTS  (rendered file presence per harness)")
 
     with open(AGENT_CONFIG, "rb") as f:
         config = tomllib.load(f)
 
+    harnesses = list(config["harnesses"].keys())
+    table = Table(box=box.SIMPLE_HEAD, padding=(0, 2), pad_edge=False, show_edge=False)
+    table.add_column("agent", style="cyan")
+    for h in harnesses:
+        table.add_column(h, justify="center")
+
     for ap in sorted(AGENTS_DIR.glob("*.md")):
         name = ap.stem
-        console.print(f"\n  [bold cyan]{name}[/bold cyan]")
-
-        for harness, hconf in config["harnesses"].items():
-            rendered = HARNESSES_DIR / harness / "agents" / f"{name}{hconf['filename_suffix']}"
+        row = [name]
+        for h in harnesses:
+            hconf = config["harnesses"][h]
+            rendered = HARNESSES_DIR / h / "agents" / f"{name}{hconf['filename_suffix']}"
             if rendered.exists():
-                harness_row(harness, s_ok(short(rendered)))
+                row.append("[green]✓[/green]")
             else:
-                harness_row(
-                    harness,
-                    s_err(f"{short(rendered)}  [dim](run sync.py --agents --apply)[/dim]"),
+                row.append("[red]✗[/red]")
+                errors.append(
+                    f"agent '{name}': rendered file missing in {h} "
+                    f"({short(rendered)}; run sync.py --agents --apply)"
                 )
-                errors.append(f"agent '{name}': rendered file missing in {harness}")
+        table.add_row(*row)
+
+    console.print(table)
 
 
 # ── skills ────────────────────────────────────────────────────────────────────
@@ -484,7 +489,7 @@ def inspect_harness_wiring(errors: list, warnings: list):
                 errors.append(f"symlink {short(dst)}: {msg}")
         for _src, dst in GENERATED_MAP.get(harness, []):
             if dst.exists() and not dst.is_symlink():
-                console.print(f"    {s_ok(short(dst), '(generated; content checked below)')}")
+                console.print(f"    {s_ok(short(dst), '(generated)')}")
             elif dst.is_symlink():
                 console.print(f"    {s_warn(short(dst), 'still a symlink — re-run bootstrap.sh')}")
                 warnings.append(
