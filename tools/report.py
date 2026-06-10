@@ -88,11 +88,6 @@ HARNESS_LIVE_INSTR = {h: w["instruction_live"] for h, w in HARNESS_WIRING.items(
 SYMLINK_MAP = {h: w["symlinks"] for h, w in HARNESS_WIRING.items()}
 GENERATED_MAP = {h: w["generated"] for h, w in HARNESS_WIRING.items()}
 
-FENCE_RE = re.compile(
-    r"<!-- block: (?P<name>[\w-]+) -->\n.*?<!-- /block: (?P=name) -->",
-    re.DOTALL,
-)
-
 console = Console()
 
 
@@ -674,38 +669,6 @@ def inspect_mcp_servers(errors: list, warnings: list):
                 errors.append(f"MCP server '{name}' ({harness}): not registered in {short(live)}")
 
 
-# ── harness-specific ──────────────────────────────────────────────────────────
-
-
-def inspect_harness_specific():
-    section("HARNESS-SPECIFIC SECTIONS  (diagnostic)")
-
-    for harness, instr in HARNESS_FILES.items():
-        console.print(f"\n  [bold]{harness}[/bold]")
-        if not instr.exists():
-            console.print("    [dim]instruction file not found[/dim]")
-            continue
-
-        # strip all fenced regions; what remains is harness-specific
-        stripped = FENCE_RE.sub("", instr.read_text())
-        items = [
-            line.strip().replace("__REPO__", str(REPO))
-            for line in stripped.splitlines()
-            if line.strip()
-            and line.strip() != "---"
-            and (line.strip().startswith("#") or line.strip().startswith("@"))
-        ]
-
-        if items:
-            for item in items:
-                if item.startswith("@"):
-                    console.print(f"    [yellow]@[/yellow]  [dim]{item[1:]}[/dim]")
-                else:
-                    console.print(f"    [dim]§[/dim]  {item}")
-        else:
-            console.print("    [dim](none)[/dim]")
-
-
 # ── main ──────────────────────────────────────────────────────────────────────
 
 
@@ -728,7 +691,6 @@ def main():
     inspect_manifest_drift(errors, warnings)
     inspect_harness_wiring(errors, warnings)
     inspect_generated_drift(warnings)
-    inspect_harness_specific()
 
     section("SUMMARY")
     console.print()

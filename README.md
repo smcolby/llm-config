@@ -300,7 +300,6 @@ Prints every shared component and how it manifests per harness, verifies all sym
 - **MANIFEST-DERIVED FILES** — drift between `shared/extensions/*.toml` + `shared/mcp-servers.toml` and the repo files they render to (same check as `wire_extensions.py --check`)
 - **HARNESS WIRING** — bootstrap-managed symlinks + generated files; surfaces missing/dangling state
 - **GENERATED FILE DRIFT** — live files written by bootstrap from templates vs. the rendered template, with unified diff and resolution instructions; warnings only (manual reconciliation)
-- **HARNESS-SPECIFIC SECTIONS** — diagnostic view of content outside block fences in each harness instruction file
 
 Exits non-zero on hard failures (broken symlink, missing render, dangling skill). Generated-file drift is a warning. Requires `rich`: `pip install rich`.
 

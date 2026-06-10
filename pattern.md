@@ -275,7 +275,6 @@ Pre-commit hooks (configured in `.pre-commit-config.yaml`) run `verify.py` along
 - Drift between manifest sources (`shared/extensions/*.toml`, `shared/mcp-servers.toml`) and the per-harness files they render to in the repo (same check as `wire_extensions.py --check`)
 - All bootstrap-managed symlinks and generated files, plus their wiring status
 - Drift between bootstrap-generated live files (with placeholders resolved) and the rendered template — surfaced as a warning with a unified diff and manual-resolution instructions
-- Harness-specific content outside block fences, per harness — the primary gap-analysis surface for identifying functionality that exists in one harness but not others
 
 Run it with:
 ```bash
