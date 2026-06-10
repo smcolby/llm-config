@@ -28,7 +28,6 @@ import wire_extensions  # noqa: E402
 REPO = wire_extensions.REPO
 HOME = wire_extensions.HOME
 EXTENSIONS_DIR = wire_extensions.EXTENSIONS_DIR
-MCP_MANIFEST = wire_extensions.MCP_MANIFEST
 BLOCKS_DIR = REPO / "shared/blocks"
 AGENTS_DIR = REPO / "shared/agents"
 MODELS_DIR = REPO / "shared/models"
@@ -200,75 +199,73 @@ def _ext_check_mcp(config_str: str, server_key: str) -> tuple[bool, str]:
     )
 
 
-def inspect_extensions(errors: list, warnings: list):
-    section("EXTENSIONS")
-    extensions = load_extensions()
+def _tool_cell(ext: dict, harness: str) -> tuple[str, list[str]]:
+    """Return (cell_text, failure_messages) for one tool × harness cell.
 
+    Cell vocabulary comes from `mechanisms = [...]` in the harness block.
+    Verify checks (verify_hook / verify_dir / verify_mcp / verify_pi_package)
+    and declared symlinks are run; failures move to the SUMMARY.
+    """
+    hconf = ext.get("harnesses", {}).get(harness)
+    if hconf is None:
+        return "[dim]—[/dim]", []
+
+    mechanisms = hconf.get("mechanisms", [])
+    label = " + ".join(mechanisms) if mechanisms else "?"
+    failures: list[str] = []
+
+    for pair in hconf.get("symlinks", []):
+        src = REPO / pair[0]
+        dst = Path(pair[1].replace("~", str(HOME)))
+        ok, msg = check_symlink(src, dst)
+        if not ok:
+            failures.append(f"symlink {short(dst)}: {msg}")
+    if "verify_pi_package" in hconf:
+        ok, msg = _ext_check_pi_package(hconf["verify_pi_package"])
+        if not ok:
+            failures.append(msg)
+    if "verify_hook" in hconf:
+        ok, msg = _ext_check_hook(hconf["verify_hook"])
+        if not ok:
+            failures.append(msg)
+    if "verify_dir" in hconf:
+        ok, msg = _ext_check_dir(hconf["verify_dir"])
+        if not ok:
+            failures.append(msg)
+    if "verify_mcp" in hconf:
+        ok, msg = _ext_check_mcp(hconf["verify_mcp"], ext.get("block", ext["name"]))
+        if not ok:
+            failures.append(msg)
+
+    glyph = "[red]✗[/red]" if failures else "[green]✓[/green]"
+    return f"{glyph} {label}", failures
+
+
+def inspect_tools(errors: list, warnings: list):
+    """Single TOOLS table: tools as rows, harnesses as columns, mechanism per cell."""
+    section("TOOLS  (per-harness integration mechanism)")
+
+    extensions = load_extensions()
     if not extensions:
-        console.print("\n  [dim]no extensions defined[/dim]")
+        console.print("\n  [dim]no tools defined[/dim]")
         return
 
-    for ext in extensions:
-        name = ext["name"]
-        install = ext.get("install", "")
-        repo = ext.get("repo", "")
-        header = f"[bold cyan]{name}[/bold cyan]"
-        if install:
-            header += f"  [dim]install:[/dim] {install}"
-        if repo:
-            header += f"  [dim]{repo}[/dim]"
-        console.print(f"\n  {header}")
+    harnesses = list(HARNESS_WIRING.keys())
+    table = Table(box=box.SIMPLE_HEAD, padding=(0, 2), pad_edge=False, show_edge=False)
+    table.add_column("tool", style="cyan")
+    for h in harnesses:
+        table.add_column(h, justify="center")
 
-        for harness, hconf in ext.get("harnesses", {}).items():
-            parts: list[str] = []
+    for ext in sorted(extensions, key=lambda e: e["name"].lower()):
+        row = [ext["name"]]
+        for h in harnesses:
+            cell, failures = _tool_cell(ext, h)
+            row.append(cell)
+            for msg in failures:
+                errors.append(f"tool '{ext['name']}' ({h}): {msg}")
+        table.add_row(*row)
 
-            for pair in hconf.get("symlinks", []):
-                src = REPO / pair[0]
-                dst = Path(pair[1].replace("~", str(HOME)))
-                ok, msg = check_symlink(src, dst)
-                if ok:
-                    parts.append(s_ok(short(dst), f"→ {short(src)}"))
-                else:
-                    parts.append(s_err(f"{short(dst)}: {msg}"))
-                    errors.append(f"extension '{name}' ({harness}) symlink: {msg}")
-
-            if "verify_pi_package" in hconf:
-                ok, msg = _ext_check_pi_package(hconf["verify_pi_package"])
-                if ok:
-                    parts.append(s_ok(msg))
-                else:
-                    parts.append(s_err(msg))
-                    errors.append(f"extension '{name}' ({harness}): {msg}")
-
-            if "verify_hook" in hconf:
-                ok, msg = _ext_check_hook(hconf["verify_hook"])
-                if ok:
-                    parts.append(s_ok(msg))
-                else:
-                    parts.append(s_err(msg))
-                    errors.append(f"extension '{name}' ({harness}): {msg}")
-
-            if "verify_dir" in hconf:
-                ok, msg = _ext_check_dir(hconf["verify_dir"])
-                if ok:
-                    parts.append(s_ok(msg))
-                else:
-                    parts.append(s_err(msg))
-                    errors.append(f"extension '{name}' ({harness}): {msg}")
-
-            if "verify_mcp" in hconf:
-                ok, msg = _ext_check_mcp(hconf["verify_mcp"], ext.get("block", name))
-                if ok:
-                    parts.append(s_ok(msg))
-                else:
-                    parts.append(s_err(msg))
-                    errors.append(f"extension '{name}' ({harness}): {msg}")
-
-            if not parts:
-                setup = hconf.get("manual_setup", "no verify configured")
-                parts.append(s_warn(setup))
-
-            harness_row(harness, "  ·  ".join(parts))
+    console.print(table)
 
 
 # ── blocks ────────────────────────────────────────────────────────────────────
@@ -620,55 +617,6 @@ def inspect_manifest_drift(errors: list, warnings: list):
         console.print("\n    [dim]Resolve: python tools/wire_extensions.py[/dim]")
 
 
-# ── MCP servers ───────────────────────────────────────────────────────────────
-
-
-def inspect_mcp_servers(errors: list, warnings: list):
-    section("MCP SERVERS  (shared/mcp-servers.toml)")
-
-    if not MCP_MANIFEST.exists():
-        console.print("\n  [dim]no MCP manifest[/dim]")
-        return
-
-    with open(MCP_MANIFEST, "rb") as f:
-        manifest = tomllib.load(f)
-
-    servers = manifest.get("servers", {})
-    if not servers:
-        console.print("\n  [dim]no servers declared[/dim]")
-        return
-
-    # map harness → live MCP config path (where registration is checked)
-    live_configs = {
-        "copilot": HOME / ".copilot/mcp-config.json",
-        "pi": HOME / ".pi/agent/mcp.json",
-    }
-
-    for name, conf in sorted(servers.items()):
-        console.print(f"\n  [bold cyan]{name}[/bold cyan]")
-        targets = conf.get("harnesses", [])
-        if not targets:
-            console.print("    [dim]no harnesses declared[/dim]")
-            warnings.append(f"MCP server '{name}': no harnesses declared in manifest")
-            continue
-
-        for harness in targets:
-            live = live_configs.get(harness)
-            if live is None:
-                harness_row(harness, s_warn(f"no live MCP config path known for {harness}"))
-                continue
-            if not live.exists():
-                harness_row(harness, s_err(f"{short(live)} not found"))
-                errors.append(f"MCP server '{name}' ({harness}): live config {short(live)} missing")
-                continue
-            registered = name in _load_json(live).get("mcpServers", {})
-            if registered:
-                harness_row(harness, s_ok(f"registered in {short(live)}"))
-            else:
-                harness_row(harness, s_err(f"not registered in {short(live)}"))
-                errors.append(f"MCP server '{name}' ({harness}): not registered in {short(live)}")
-
-
 # ── main ──────────────────────────────────────────────────────────────────────
 
 
@@ -682,12 +630,11 @@ def main():
         style="bright_blue",
     )
 
-    inspect_extensions(errors, warnings)
+    inspect_tools(errors, warnings)
     inspect_blocks(errors, warnings)
     inspect_agents(errors, warnings)
     inspect_skills(errors, warnings)
     inspect_models(errors, warnings)
-    inspect_mcp_servers(errors, warnings)
     inspect_manifest_drift(errors, warnings)
     inspect_harness_wiring(errors, warnings)
     inspect_generated_drift(warnings)

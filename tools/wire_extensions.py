@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """wire_extensions.py — generate and symlink per-harness extension files.
 
-Reads shared/extensions/*.toml and shared/mcp-servers.toml, then:
+Reads shared/extensions/*.toml, then:
   - Generates copilot hook JSON files from [[hooks]] entries
   - Generates pi TypeScript extension stubs from [[hooks]] entries
-  - Generates harness MCP config files from shared/mcp-servers.toml
+  - Generates harness MCP config files by walking every extension's [mcp] section
+    and including it where the harness opts in via `mechanisms = [..., "mcp"]`
   - Creates symlinks declared in each manifest
 
 Called by bootstrap.sh. Pass --check to report drift without writing.
@@ -29,7 +30,6 @@ class DriftEntry(NamedTuple):
 REPO = Path(__file__).parent.parent
 HOME = Path.home()
 EXTENSIONS_DIR = REPO / "shared/extensions"
-MCP_MANIFEST = REPO / "shared/mcp-servers.toml"
 
 # Output paths for generated MCP configs, keyed by harness name
 MCP_PATHS: dict[str, Path] = {
@@ -137,12 +137,23 @@ def _pi_ts(stem: str, hooks: list[dict]) -> str | None:
     return _TS_TEMPLATE.format(stem=stem, handlers="".join(handlers))
 
 
-def _mcp_content(harness: str, manifest: dict) -> str:
-    servers = {
-        name: {k: v for k, v in srv.items() if k != "harnesses"}
-        for name, srv in manifest.get("servers", {}).items()
-        if harness in srv.get("harnesses", [])
-    }
+def _mcp_content(harness: str) -> str:
+    """Aggregate MCP server registrations for a harness across every extension manifest.
+
+    An extension contributes its [mcp] section to a harness's MCP config when that
+    harness's [harnesses.<harness>] block lists "mcp" in `mechanisms`.
+    """
+    servers: dict[str, dict] = {}
+    for ext_file in sorted(EXTENSIONS_DIR.glob("*.toml")):
+        with open(ext_file, "rb") as f:
+            ext = tomllib.load(f)
+        mcp = ext.get("mcp")
+        if not mcp:
+            continue
+        hconf = ext.get("harnesses", {}).get(harness, {})
+        if "mcp" not in hconf.get("mechanisms", []):
+            continue
+        servers[ext["name"]] = dict(mcp)
     return json.dumps({"mcpServers": servers}, indent=2) + "\n"
 
 
@@ -178,13 +189,9 @@ def generate_hooks(check: bool) -> int:
 
 
 def generate_mcp(check: bool) -> int:
-    if not MCP_MANIFEST.exists():
-        return 0
-    with open(MCP_MANIFEST, "rb") as f:
-        manifest = tomllib.load(f)
     drift = 0
     for harness, path in MCP_PATHS.items():
-        content = _mcp_content(harness, manifest)
+        content = _mcp_content(harness)
         label = str(path.relative_to(REPO))
         if check:
             drift += _check_content(path, content, label)
@@ -218,15 +225,12 @@ def collect_hooks_drift() -> list[DriftEntry]:
 
 
 def collect_mcp_drift() -> list[DriftEntry]:
-    """Return drift status for every harness MCP config rendered from shared/mcp-servers.toml."""
-    if not MCP_MANIFEST.exists():
-        return []
-    with open(MCP_MANIFEST, "rb") as f:
-        manifest = tomllib.load(f)
+    """Return drift status for every harness MCP config aggregated from extension manifests."""
     result: list[DriftEntry] = []
-    for _harness, path in MCP_PATHS.items():
-        content = _mcp_content(_harness, manifest)
-        result.append(DriftEntry(path, MCP_MANIFEST, _status_of(path, content)))
+    for harness, path in MCP_PATHS.items():
+        content = _mcp_content(harness)
+        # Source is the extensions directory collectively (multiple manifests may contribute)
+        result.append(DriftEntry(path, EXTENSIONS_DIR, _status_of(path, content)))
     return result
 
 

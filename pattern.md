@@ -147,11 +147,13 @@ New skills follow the same pattern: if general-purpose, add `shared/skills/{name
 
 ---
 
-## Extensions — wiring globally installed tools
+## Extensions / tools — wiring globally installed third-party tools
 
-Skills and blocks handle LLM-authored content. Extensions are a different category: globally installed third-party tools (installed via brew, npm, etc.) that need per-harness configuration to activate. The installation itself is outside llm-config's scope; the repo owns the wiring only.
+Skills and blocks handle LLM-authored content. Tools (called "extensions" in the codebase) are a different category: third-party programs (installed via brew, npm, or cloned from git) that need per-harness configuration to activate. The installation itself is outside llm-config's scope; the repo owns the wiring only.
 
-Because each harness requires different wiring for the same extension (Claude Code may need a hook entry; Copilot may need a JSON config file; pi may need a TypeScript extension stub), the wiring cannot be captured in a single shared block. Instead, each extension is declared in a TOML manifest in `shared/extensions/`, and `wire_extensions.py` generates harness-specific files from those declarations.
+The expected install paradigm is **install once at the system level, then llm-config wires each harness**. Two caveats: (1) some harnesses sandbox their tooling, e.g. pi installs npm packages into `~/.pi/agent/npm/` regardless of any global install, so for pi the wiring is a *declaration in `pi/settings.json` `packages[]`* that pi resolves into a sandboxed install; (2) MCP servers register per-harness in each harness's MCP config file, except where the harness loads MCP servers through a plugin runtime (e.g. Claude Code, where the plugin directory's manifest registers MCP servers without a config entry).
+
+Each tool is declared in one TOML manifest at `shared/extensions/<name>.toml`. `wire_extensions.py` generates harness-specific files from those declarations: copilot hook JSON files, pi TypeScript extension stubs, and aggregated MCP configs.
 
 **Manifest schema:**
 
@@ -160,6 +162,12 @@ name = "MyTool"
 repo = "https://github.com/owner/mytool"
 install = "brew install mytool"   # for reference; not run by llm-config
 block = "mytool"                  # shared block carrying the LLM-facing instructions
+
+# Optional: top-level [mcp] section if this tool ships an MCP server.
+# Harnesses opt in by listing "mcp" in their mechanisms.
+[mcp]
+command = "mytool"
+args = ["--mcp"]
 
 # Optional: command-based hooks rendered per harness by wire_extensions.py.
 # Each [[hooks]] entry becomes one event handler. copilot_event → JSON file;
@@ -171,30 +179,26 @@ command = "mytool hook"
 timeout = 5
 
 [harnesses.claude-code]
+mechanisms = ["hook"]                  # vocabulary used in the TOOLS table
 verify_hook = "mytool hook claude"     # substring to find in PreToolUse hook commands
 manual_setup = "mytool init -g"        # one-time command, printed in bootstrap checklist
 
 [harnesses.copilot]
+mechanisms = ["hook", "mcp"]
 symlinks = [["harnesses/copilot/hooks/mytool.json", "~/.github/hooks/mytool.json"]]
+verify_mcp = "~/.copilot/mcp-config.json"
 manual_setup = "mytool init -g --copilot"
 
 [harnesses.pi]
+mechanisms = ["pi-ext", "mcp"]
 symlinks = [["harnesses/pi/extensions/mytool.ts", "~/.pi/agent/extensions/mytool.ts"]]
-# omit entirely if the global install is sufficient with no additional wiring
+verify_mcp = "~/.pi/agent/mcp.json"
+# omit the entire [harnesses.<h>] block if this tool isn't wired for that harness
 ```
 
-Extensions whose pi wiring requires more than a simple command (e.g. version checks, custom rewrite logic) should keep a hand-authored `.ts` file and use `symlinks` without `[[hooks]]`.
+The `mechanisms` field is the integration-shape vocabulary; report.py renders it directly into the TOOLS table cell. Conventional values: `hook` (settings hook or hook JSON), `plugin` (plugin directory), `skill` (skill symlink), `pi-npm` / `pi-git` (pi sandbox install), `pi-ext` (pi TypeScript extension), `mcp` (MCP server registration).
 
-**MCP servers** are declared separately in `shared/mcp-servers.toml` (not in extension manifests) since they are not always tied to a single extension:
-
-```toml
-[servers.my-server]
-command = "my-server"
-args = ["--mcp"]
-harnesses = ["copilot", "pi"]
-```
-
-`wire_extensions.py` renders this into `harnesses/copilot/mcp-config.json` and `harnesses/pi/mcp.json`.
+Tools whose pi wiring requires more than a simple command (e.g. version checks, custom rewrite logic) should keep a hand-authored `.ts` file and use `symlinks` without `[[hooks]]`. Tools that exist only as MCP servers (no hook, no symlink, no install overhead) still get a manifest — just `name` + `[mcp]` + a `[harnesses.<h>]` block with `mechanisms = ["mcp"]`.
 
 Supported verify check types (one per harness, checked by `report.py`):
 - `verify_hook`: substring to find in a PreToolUse hook command in the Claude Code settings
@@ -202,9 +206,9 @@ Supported verify check types (one per harness, checked by `report.py`):
 - `verify_mcp`: path to an MCP config file to check for server registration
 - `verify_pi_package`: package identifier (e.g. `npm:context-mode`) to find in `harnesses/pi/settings.json` `packages[]`
 
-**`wire_extensions.py`** reads all manifests and `shared/mcp-servers.toml`, then:
+**`wire_extensions.py`** reads all manifests, then:
 1. Generates copilot hook JSON files and pi TypeScript stubs from `[[hooks]]` entries
-2. Generates MCP config files from `shared/mcp-servers.toml`
+2. Generates harness MCP configs by walking every manifest's `[mcp]` section and including each in the harnesses that opt in via `mechanisms = [..., "mcp"]`
 3. Creates `symlinks` declared per harness
 4. Prints a `manual_setup` checklist for one-time steps that cannot be automated
 
@@ -271,8 +275,8 @@ Pre-commit hooks (configured in `.pre-commit-config.yaml`) run `verify.py` along
 - Every shared agent, which harnesses have a rendered file
 - Every detected skill, whether its symlinks are valid and non-dangling, and the live target path
 - Every shared model config, which harnesses have a symlink to it, and which harnesses are explicitly excluded (e.g. cloud-only harnesses that can't use local model routing)
-- Every MCP server declared in `shared/mcp-servers.toml`, and whether each target harness's live MCP config actually registers it
-- Drift between manifest sources (`shared/extensions/*.toml`, `shared/mcp-servers.toml`) and the per-harness files they render to in the repo (same check as `wire_extensions.py --check`)
+- A unified TOOLS table showing each declared tool's integration mechanism per harness (one row per tool, one column per harness, mechanism vocabulary in each cell — `hook`, `plugin`, `skill`, `pi-npm`, `pi-ext`, `mcp`, or `+`-joined combinations)
+- Drift between manifest sources (`shared/extensions/*.toml`) and the per-harness files they render to in the repo (same check as `wire_extensions.py --check`)
 - All bootstrap-managed symlinks and generated files, plus their wiring status
 - Drift between bootstrap-generated live files (with placeholders resolved) and the rendered template — surfaced as a warning with a unified diff and manual-resolution instructions
 

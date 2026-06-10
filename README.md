@@ -239,13 +239,14 @@ For domain-specific skills tightly coupled to a single project, the skill can li
 
 ## Extensions
 
-Extensions are globally installed tools that need per-harness wiring. **llm-config does not install them** — that is the user's responsibility. The repo owns the wiring and generates harness-specific files from shared definitions.
+Extensions (called "tools" in the unified report view) are third-party programs that need per-harness wiring. **llm-config does not install them** — install once at the system level (brew, npm -g, git clone), then llm-config wires every harness from the same `shared/extensions/<name>.toml` manifest. The one wrinkle: pi sandboxes its npm packages into `~/.pi/agent/npm/`, so a global install alone doesn't make a tool visible to pi; the manifest's `verify_pi_package` field declares the package for pi's own sandbox installer.
 
-| Extension | Install yourself first | Wiring manifest |
+| Tool | Install yourself first | Wiring manifest |
 |-----------|------------------------|-----------------|
 | RTK | `brew install rtk` | `shared/extensions/rtk.toml` |
 | context-mode | `npm install -g context-mode` | `shared/extensions/context-mode.toml` |
 | wiki-ops | *(llm-wiki repo)* | `shared/extensions/wiki-ops.toml` |
+| sentrux | *(installed separately)* | `shared/extensions/sentrux.toml` |
 
 **`[[hooks]]` entries** in a manifest define command-based hooks. `wire_extensions.py` renders them into:
 - `harnesses/copilot/hooks/<name>.json` — copilot hook JSON (from `copilot_event`)
@@ -253,11 +254,11 @@ Extensions are globally installed tools that need per-harness wiring. **llm-conf
 
 Complex extensions with TypeScript logic beyond a simple command (e.g. RTK's pi extension) remain hand-authored; they use `symlinks` entries as before and are not generated.
 
-**`shared/mcp-servers.toml`** declares all MCP servers with a `harnesses` list. `wire_extensions.py` renders `harnesses/copilot/mcp-config.json` and `harnesses/pi/mcp.json` from it.
+**MCP servers** are declared inline in each manifest's top-level `[mcp]` section. A harness opts in to registration by listing `"mcp"` in its `mechanisms` field. `wire_extensions.py` walks every manifest and renders `harnesses/copilot/mcp-config.json` and `harnesses/pi/mcp.json` by aggregating opted-in MCP entries. A tool that exists only as an MCP server (no hooks, no symlinks) still gets its own manifest.
 
-Generated files are committed to the repo (same pattern as rendered agent files). Run `wire_extensions.py` after changing manifests or `mcp-servers.toml`; `verify.py` catches drift.
+Generated files are committed to the repo (same pattern as rendered agent files). Run `wire_extensions.py` after changing any manifest; `verify.py` catches drift.
 
-`report.py` reads manifests to verify extension wiring at any time. If an extension is not globally installed, its verify checks will fail — that is expected on machines where it has not been installed.
+`report.py` reads manifests to verify wiring at any time, and presents a single TOOLS table (one row per manifest, one column per harness, mechanism vocabulary in each cell). If a tool is not installed on this machine, its verify checks will fail — that is expected on machines where it has not been installed.
 
 ## Verify congruence
 
@@ -296,8 +297,8 @@ Prints every shared component and how it manifests per harness, verifies all sym
 - **EXTENSIONS** — manifest → per-harness wiring (hooks, symlinks, verify checks)
 - **SHARED BLOCKS / AGENTS / SKILLS** — what's authored vs how each harness sees it
 - **SHARED MODELS** — provider configs and which harnesses consume them
-- **MCP SERVERS** — every server in `shared/mcp-servers.toml` and its registration in each target harness's live MCP config
-- **MANIFEST-DERIVED FILES** — drift between `shared/extensions/*.toml` + `shared/mcp-servers.toml` and the repo files they render to (same check as `wire_extensions.py --check`)
+- **TOOLS** — one row per extension manifest, one column per harness, mechanism vocabulary (`hook`, `plugin`, `skill`, `pi-npm`, `pi-ext`, `mcp`, or combinations) in each cell with verify-check status
+- **MANIFEST-DERIVED FILES** — drift between `shared/extensions/*.toml` and the per-harness files they render to (hook JSON, pi TypeScript stubs, aggregated MCP configs); same check as `wire_extensions.py --check`
 - **HARNESS WIRING** — bootstrap-managed symlinks + generated files; surfaces missing/dangling state
 - **GENERATED FILE DRIFT** — live files written by bootstrap from templates vs. the rendered template, with unified diff and resolution instructions; warnings only (manual reconciliation)
 

@@ -6,8 +6,15 @@ pi_event = "turn_end"
 command = "~/repos/llm-wiki/tools/health-check.sh"
 timeout = 5
 
+[harnesses.claude-code]
+# claude-code's wiki-ops mechanism is the skill symlink at ~/.claude/skills/llm-wiki,
+# wired directly by bootstrap.sh (link "$HOME/repos/llm-wiki" "$HOME/.claude/skills/llm-wiki")
+mechanisms = ["skill"]
+
 [harnesses.copilot]
+mechanisms = ["hook"]
 symlinks = [["harnesses/copilot/hooks/wiki-ops.json", "~/.github/hooks/wiki-ops.json"]]
 
 [harnesses.pi]
+mechanisms = ["pi-ext"]
 symlinks = [["harnesses/pi/extensions/wiki-ops.ts", "~/.pi/agent/extensions/wiki-ops.ts"]]

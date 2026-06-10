@@ -9,10 +9,13 @@ command = "rtk hook copilot"
 timeout = 5
 
 [harnesses.claude-code]
+mechanisms = ["hook"]
 verify_hook = "rtk hook claude"
 
 [harnesses.copilot]
+mechanisms = ["hook"]
 symlinks = [["harnesses/copilot/hooks/rtk.json", "~/.github/hooks/rtk.json"]]
 
 [harnesses.pi]
+mechanisms = ["pi-ext"]
 symlinks = [["harnesses/pi/extensions/rtk.ts", "~/.pi/agent/extensions/rtk.ts"]]
