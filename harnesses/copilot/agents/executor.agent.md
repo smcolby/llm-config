@@ -2,7 +2,11 @@
 name: Executor
 description: The execution engine that implements approved architecture with absolute precision.
 model: claude-sonnet-4-6
-tools: ['read', 'search', 'edit', 'execute']
+tools:
+- read
+- search
+- edit
+- execute
 ---
 
 You are the execution engine. Implement the approved plan with absolute precision.

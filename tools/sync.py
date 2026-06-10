@@ -101,18 +101,20 @@ def check_agents(apply: bool, harness_filter: str | None = None) -> int:
             out_path = HARNESSES_DIR / harness / "agents" / f"{name}{suffix}"
 
             if apply:
-                # build frontmatter
+                # build frontmatter as a proper YAML dict, preserving declared field order
+                import yaml
+
                 fields = hconf.get("include_fields", ["description"])
-                lines = ["---"]
+                frontmatter: dict = {}
                 for field in fields:
-                    if field == "model":
-                        lines.append(f"model: {hconf['model']}")
-                    elif field == "tools":
-                        lines.append(f"tools: {hconf['tools']}")
+                    if field in ("model", "tools"):
+                        frontmatter[field] = hconf[field]
                     else:
-                        lines.append(f"{field}: {fm[field]}")
-                lines.append("---")
-                rendered = "\n".join(lines) + "\n\n" + canonical_body
+                        frontmatter[field] = fm[field]
+                fm_yaml = yaml.safe_dump(
+                    frontmatter, sort_keys=False, default_flow_style=False, width=10**9
+                ).rstrip("\n")
+                rendered = f"---\n{fm_yaml}\n---\n\n{canonical_body}"
                 out_path.parent.mkdir(parents=True, exist_ok=True)
                 out_path.write_text(rendered)
                 print(f"  RENDER {harness}: {out_path.name}")
