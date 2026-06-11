@@ -6,7 +6,6 @@
 - Sentence case for comments and print statements: capitalize the first word and acronyms; do not capitalize common technical terms mid-sentence unless they are proper nouns.
 - Do not number sequential steps inside code comment blocks.
 - Do not end comments with a period.
-- NumPy style docstrings for Python code, unless superceded by repo-specific instructions.
 <!-- /block: code-style -->
 
 ## Writing Conventions
@@ -52,6 +51,7 @@
 - Prioritize deterministic code fixes over open-ended architectural rewrites unless explicitly requested.
 - Never guess file structures or path availability based on minimized context — query the exact range you need.
 - `edit` requires `oldText` to match the file exactly and uniquely. Keep `oldText` as short as possible while still being unique — do not pad with surrounding unchanged lines.
+- When you correct the same agent mistake twice, propose capturing it as a directive in the coding-rules catalog.
 <!-- /block: execution-guardrails -->
 
 ## Repository Instructions
@@ -176,6 +176,11 @@ Do NOT ask "what were we working on?" — search first. If search returns 0 resu
 
 After `/clear` or `/compact`: knowledge base and session stats are preserved. Use `ctx purge` to start fresh.
 <!-- /block: context-mode -->
+
+## Coding Rules
+<!-- block: rules -->
+A scoped coding-rules catalog is installed as the `rules` skill. Before creating or modifying source files, consult its index, which maps file patterns to rules (Python core, testing, docs, packaging, security), and read the matching rules. Directives marked as tool-enforced are gates: fix the code rather than fighting the linter.
+<!-- /block: rules -->
 
 ## LLM Wiki
 <!-- block: llm-wiki -->
