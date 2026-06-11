@@ -68,13 +68,13 @@ The discipline: **content earns its tier.** Promotion toward always-on requires 
 
 The architecture has five layers of LLM-facing content, ordered from broadest scope and eagerest loading to narrowest scope and laziest loading. (Extensions, third-party tools needing per-harness wiring, are a mechanism rather than content, and remain covered by cross-harness-config-pattern.md.)
 
-| Layer | What it is | Scope | Loaded | Exists in llm-config today |
-|---|---|---|---|---|
-| **1. Doctrine** | Universal behavioral instructions: style, safety guardrails, writing and git conventions, tool routing | Global, every session | Always | Yes: `shared/blocks/` |
-| **2. Rules** | Scoped, conditional guidance keyed to a language, stack, file pattern, or task: "when touching Python tests, these conventions apply" | Per language / stack / file pattern / task | Conditionally, by scope match or relevance | **No: this is the new layer** |
-| **3. Playbooks (skills)** | Multi-step procedures with progressive disclosure: how to run an adversarial review, how to author a test suite | Per procedure | On demand, by description match or explicit invocation | Yes: `shared/skills/` |
-| **4. Personas (agents)** | Stances and authorities for delegated work: the critic, the tester, the planner | Per delegated task | When spawned | Yes: `shared/agents/` |
-| **5. Seeds** | Repository instantiation templates: starter `AGENTS.md`, starter rule selections, starter tool configs for a given project archetype | Per new repository | Once, at repo creation | **No: new layer** |
+| Layer | What it is | Scope | Loaded |
+|---|---|---|---|
+| **1. Doctrine** | Universal behavioral instructions: style, safety guardrails, writing and git conventions, tool routing | Global, every session | Always |
+| **2. Rules** | Scoped, conditional guidance keyed to a language, stack, file pattern, or task: "when touching Python tests, these conventions apply" | Per language / stack / file pattern / task | Conditionally, by scope match or relevance |
+| **3. Playbooks (skills)** | Multi-step procedures with progressive disclosure: how to run an adversarial review, how to author a test suite | Per procedure | On demand, by description match or explicit invocation |
+| **4. Personas (agents)** | Stances and authorities for delegated work: the critic, the tester, the planner | Per delegated task | When spawned |
+| **5. Seeds** | Repository instantiation templates: starter `AGENTS.md`, starter rule selections, starter tool configs for a given project archetype | Per new repository | Once, at repo creation |
 
 ### Coverage test
 
@@ -90,7 +90,7 @@ The layers claim to cover software development writ large, and the claim is chec
 | CI/CD and infra-as-code | Stack rules (the pipeline DSL is a stack) + scoped activation on workflow files |
 | Database / data migrations | Stack rule + migration playbook; anti-hallucination entries for the ORM's deprecated APIs |
 
-The instantiated catalog (see [Python instantiation](#python-instantiation)) covers coding, documentation, review, and testing first because those were the seeding priorities; the rows above enter the catalog through the same operations as everything else.
+A first catalog (see [Python instantiation](#python-instantiation)) will typically cover coding, documentation, review, and testing before anything else; the rows above enter the catalog through the same operations as everything else, as need arises.
 
 The layers compose. A persona supplies the stance ("you are an adversarial reviewer; find problems, do not praise"), a playbook supplies the procedure (review passes, severity rubric, output format), and rules supply the domain constraints the reviewer checks against (the Python testing rule defines what a healthy test looks like; the critic enforces it). Keeping stance, procedure, and domain knowledge in separate artifacts means each is reusable: the same critic persona runs a security review with a different playbook, and the same testing rule serves both the author writing tests and the critic judging them.
 
@@ -283,24 +283,24 @@ One caveat, stated plainly: gates act post-generation. The linter does not stop 
 
 The pattern is general; this is the *first* concrete catalog it produces, covering the initial priority areas (coding, documentation, adversarial review, testing) for the first language. It is a worked example of instantiation, never the extent of coverage: further languages, stacks, and lifecycle activities (see the coverage test) enter through `ingest` and `capture` as need arises. Each row is one artifact in the appropriate layer.
 
-### Doctrine (exists; one addition)
+### Doctrine
 
-`code-style`, `writing-conventions`, `git-conventions`, `execution-guardrails`, tool-routing blocks. Already correct: universal, small, always-on. The single addition is the capture nudge, one sentence: when you correct the same agent mistake twice, propose capturing it.
+Universal blocks: code style, writing conventions, git conventions, execution guardrails, tool routing. Small and always-on, plus the one standing capture nudge: when you correct the same agent mistake twice, propose capturing it.
 
-### Rules (new)
+### Rules
 
 | Rule | Tier / scope | Content sketch |
 |---|---|---|
 | `lang/python/core` | `scoped` on `**/*.py` | Full type annotations with modern syntax; guard clauses and early returns, happy path last; descriptive names with auxiliary verbs; module and package naming; logging over print; dataclasses/Pydantic over bare dicts at boundaries; anti-hallucination list (e.g. deprecated `typing` aliases, `os.path` where `pathlib` is standard) |
 | `lang/python/testing` | `scoped` on test globs | Pytest only; fixtures over setup methods; `parametrize` over loops; `tmp_path` over manual temp handling; one behavior per test, named for the behavior; no inter-test dependence; coverage policy and what not to test; property-based testing (hypothesis) for pure functions with rich input spaces |
-| `lang/python/docs` | `scoped` on `**/*.py` + docs globs | NumPy-style docstrings (already doctrine; the rule carries the *full* section-by-section spec so doctrine stays small); examples must be executable; README and API docs updated in the same change as the code they describe |
+| `lang/python/docs` | `scoped` on `**/*.py` + docs globs | NumPy-style docstrings (the rule carries the *full* section-by-section spec so doctrine carries at most a one-line gesture); examples must be executable; README and API docs updated in the same change as the code they describe |
 | `lang/python/packaging` | `scoped` on `pyproject.toml`, lockfiles | uv for environments and installs; `pyproject.toml` as single source of project metadata; src layout; exact-pin lockfile policy; ruff + pyright as the standing lint/type gate |
 | `lang/python/security` | `requested` | Validate at system boundaries only; secrets never in code or committed config; `subprocess` without `shell=True`; pinned-dependency audit habits |
 | `stack/*` | `scoped`, opt-in per repo | Version-pinned framework rules (FastAPI, NumPy/SciPy, etc.), ingested from community catalogs via the ingest operation as needed |
 
 Tier choices follow the budget principle. `core`, `testing`, `docs`, and `packaging` are `scoped` because their directives bear on essentially every edit to their matching files. `security` is `requested` because its directives concentrate at system boundaries and judgment points; paying for it on every `.py` touch fails the relevance test, while a strong description ("apply when handling user input, secrets, subprocess calls...") gets it loaded at exactly those points.
 
-### Playbooks (new skills)
+### Playbooks
 
 | Playbook | Invocation | Content sketch |
 |---|---|---|
@@ -308,11 +308,11 @@ Tier choices follow the budget principle. `core`, `testing`, `docs`, and `packag
 | `test-author` | requested/invoked | Derive cases from the contract, enumerate behaviors in a table before writing code, choose example-based vs property-based per case, verify tests fail before the fix when reproducing bugs |
 | `doc-author` | requested/invoked | Docstring coverage pass, executable examples, sync check between code and prose docs, changelog discipline |
 
-### Personas (exist; recomposed)
+### Personas
 
-`critic`, `tester`, `planner`, `executor`, `coordinator` already exist as agents. The change is compositional: persona bodies shed procedure (which moves into playbooks) and domain constraints (which move into rules), keeping only stance, authority, and output contract. The critic persona plus the `adversarial-review` playbook plus the active Python rules together produce a Python adversarial review; swap the rules and the same persona reviews TypeScript.
+The working set: `critic`, `tester`, `planner`, `executor`, `coordinator`, plus domain reviewers as needed. Persona bodies carry no procedure (that lives in playbooks) and no domain constraints (those live in rules); they keep only stance, authority, and output contract. The critic persona plus the `adversarial-review` playbook plus the active Python rules together produce a Python adversarial review; swap the rules and the same persona reviews TypeScript.
 
-### Seeds (new)
+### Seeds
 
 | Seed | Axis | Contents |
 |---|---|---|
@@ -400,16 +400,16 @@ Periodic (scheduled or prompted) review for semantic staleness, which verify() c
 
 ---
 
-## Integration with the cross-harness spec
+## Integration with the distribution layer
 
-This section records how the pattern landed in llm-config (instantiated 2026-06); the README documents day-to-day usage.
+How this pattern composes with cross-harness-config-pattern.md when both are implemented in one repository:
 
-- **Canonical directories:** `shared/rules/` (taxonomy as above; `lang/python/` authored first) and `shared/seeds/` (four Python archetypes). Bodies are harness-agnostic; packaging is rendered.
-- **Global activation uses the degradation ladder's router form.** None of the wired harnesses (pi, Claude Code, Copilot CLI) support native glob-scoped rules, so `scoped` degrades to one `requested`-tier router skill: `sync.py --rules` validates rule schemas and generates `shared/skills/rules/SKILL.md` as an index mapping file patterns to rules, with rule bodies readable through a relative symlink. One skill wiring, progressive disclosure, no per-rule skill churn.
-- **Project-level formats render through `tools/render_rules.py`** (Cursor `.mdc` with `globs`/`alwaysApply`, Copilot `*.instructions.md` with `applyTo`), each copy provenance-stamped. The `repo-seed` skill drives it. Adding a harness with native scoped rules (e.g. Cursor) remains a registry entry plus a render target; the renderer already speaks the format.
-- **Playbooks are ordinary skills** riding the existing symlink mechanism: `adversarial-review`, `test-author`, `doc-author`, plus the operations (`catalog-ingest`, `catalog-audit`, `repo-seed`, with capture embedded in review and doctrine per the trigger matrix).
-- **Seeds are never wired into harnesses**; the `repo-seed` skill consumes them at repo-creation time.
-- **verify() extended `tools/verify.py`** with the doctrine token ceiling (`doctrine_token_ceiling` in the registry) alongside the existing congruence checks; `report.py` gained a RULES section. The audit schedule is a harness scheduling feature or a calendar reminder; it needs no infrastructure in this repo.
+- **Rules and seeds get canonical directories** beside the distribution pattern's blocks, agents, and skills, following the same canonical-source discipline: bodies are harness-agnostic, packaging is rendered.
+- **Global activation on harnesses without native glob-scoped rules uses the degradation ladder's router form**: the sync tool validates rule schemas and generates the router skill's index from rule frontmatter, with rule bodies reachable through the skill directory. One skill wiring, progressive disclosure, no per-rule churn in the skill registry as the catalog grows.
+- **Project-level formats render through one renderer** (Cursor `.mdc` with `globs`/`alwaysApply`, Copilot `*.instructions.md` with `applyTo`), every copy provenance-stamped; the seed playbook drives it. Adding a harness with native scoped rules is a registry entry plus a render target.
+- **Playbooks are ordinary skills** riding the distribution pattern's skill mechanism unchanged; operations ship as playbooks per the trigger matrix, with capture embedded in review playbooks and one doctrine sentence.
+- **Seeds are never wired into harnesses**; the seed playbook consumes them at repo-creation time, so they need only live in the repo.
+- **verify() extends the distribution pattern's congruence tool** with rule schema validation and the doctrine token ceiling (the ceiling declared in the registry, so generator and verifier read one number); the inspection tool gains a rules view. The audit schedule is a harness scheduling feature or a calendar reminder; it needs no repo infrastructure.
 
 ---
 
