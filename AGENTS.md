@@ -19,6 +19,9 @@ Every change ends with `python tools/verify.py` clean, then a commit. Symlinks m
 - **A coding rule**: edit `shared/rules/<axis>/<name>.md` (frontmatter: name, description, tier, scope, stack, reviewed), then `python tools/sync.py --rules --apply` to revalidate and regenerate the router index plus the Claude Code path-scoped renders in `harnesses/claude-code/rules/`. Prefer the `catalog-ingest` skill for external content.
 - **A persona**: edit `shared/agents/<name>.md` (stance only; procedure belongs in a playbook, constraints in a rule), then `python tools/sync.py --agents --apply`.
 - **A playbook or skill body**: edit `shared/skills/<name>/SKILL.md`; live instantly via symlink. New skills must be added to `tools/harnesses.toml` and wired with `python tools/bootstrap.py --skill <name>`.
+- **A project seed** (a repo archetype the `repo-seed` skill stamps into new projects): edit `shared/seeds/<archetype>/` (`seed.toml`, `AGENTS.md`, `pyproject-fragment.toml`, `pre-commit-config.yaml`). Consumed at seed time; no propagation step.
+- **An extension** (an MCP server or harness hook): edit `shared/extensions/<name>.toml`, then `python tools/wire_extensions.py` to regenerate the per-harness hook and MCP configs.
+- **A model config**: edit `shared/models/<provider>.{json,toml}`, then `python tools/bootstrap.py` to regenerate and rewire the per-harness model files.
 - **New wiring** (a new symlink target, generated file, or harness): `python tools/bootstrap.py`. Pure content edits do not need it.
 
 ## Conventions
