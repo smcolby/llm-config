@@ -7,6 +7,7 @@ description: >
   plus tool configs from a seed archetype. Use when creating a new repo,
   adding agent config to an existing repo, or bringing a seeded repo up to
   date with the catalog (reseed).
+reviewed: 2026-06
 ---
 
 # Repo Seed / Reseed

@@ -25,7 +25,8 @@ command = "context-mode hook vscode-copilot sessionstart"
 
 [harnesses.claude-code]
 mechanisms = ["plugin"]
-verify_dir = "~/.claude/context-mode"
+# inner manifest link only — ~/.claude/context-mode itself is the tool's data dir
+verify_dir = "~/.claude/context-mode/.claude-plugin"
 
 [harnesses.copilot]
 mechanisms = ["hook", "mcp"]

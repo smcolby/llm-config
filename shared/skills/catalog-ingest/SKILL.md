@@ -5,6 +5,7 @@ description: >
   style guides) into the llm-config catalog: classify, normalize, harden,
   dedupe, pin, and record provenance. Use when asked to add a source,
   rule set, or best-practices document to the catalog.
+reviewed: 2026-06
 ---
 
 # Catalog Ingest

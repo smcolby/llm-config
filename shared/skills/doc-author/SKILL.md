@@ -5,6 +5,7 @@ description: >
   coverage passes, executable examples, syncing prose docs with code, and
   changelog discipline. Use when documenting an API, updating a README,
   or bringing docs in line with changed code.
+reviewed: 2026-06
 ---
 
 # Doc Author

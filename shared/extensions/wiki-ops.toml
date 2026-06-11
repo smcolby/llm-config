@@ -10,6 +10,7 @@ timeout = 5
 # claude-code gets wiki-ops as a native skill at ~/.claude/skills/wiki-ops (bootstrap.py),
 # plus the llm-wiki plugin link at ~/.claude/skills/llm-wiki for hooks
 mechanisms = ["skill"]
+verify_dir = "~/.claude/skills/wiki-ops"
 
 [harnesses.copilot]
 mechanisms = ["hook"]

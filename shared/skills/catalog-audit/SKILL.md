@@ -5,6 +5,7 @@ description: >
   stack pins, hardening opportunities, promotion/demotion candidates, and
   doctrine budget. Use on a schedule, after a model upgrade, or after a
   major dependency version bump.
+reviewed: 2026-06
 ---
 
 # Catalog Audit

@@ -5,6 +5,7 @@ description: >
   style passes with a severity rubric and findings-only output. Use when
   reviewing a diff or pull request, auditing recent changes, or acting as
   the Critic persona.
+reviewed: 2026-06
 ---
 
 # Adversarial Review

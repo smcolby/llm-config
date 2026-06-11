@@ -6,6 +6,7 @@ description: >
   critique, refine, approve, finish. Use for rigorous feature work, when
   asked for a plan-implement-critique cycle, or when acting as the
   Coordinator persona.
+reviewed: 2026-06
 ---
 
 # Two-Pass Development Workflow

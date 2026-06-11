@@ -6,12 +6,17 @@ description: >
   working inside an llm-wiki project directory — for ingest ("process this
   source", "add this to the wiki"), query ("what does the wiki say about X"),
   or maintenance ("lint the wiki", "find orphan pages").
+reviewed: 2026-06
 ---
 
 # Wiki Ops
 
 Universal workflow skill for LLM-maintained wikis. The per-wiki `AGENTS.md`
 holds domain context; this skill holds the operational procedures.
+
+The `ctx_*` calls below assume the context-mode extension. When those tools
+are unavailable in a session, substitute native equivalents (read, grep,
+file-walking scripts); the workflows apply unchanged.
 
 ---
 
@@ -56,8 +61,9 @@ Triggered by: "ingest this", "add this source", "process [file/URL]"
   - If the page exists: read it, then edit to integrate new information;
     note any contradiction with existing claims using a `> ⚠️ Contradiction:` blockquote
   - If the page doesn't exist: create it with the standard frontmatter
-- Use `subagent(tasks: [...], concurrency: 4)` to update multiple pages in parallel
-  when there are 3+ pages to update and the updates are independent
+- Update pages in parallel via the harness's subagent mechanism (e.g. parallel
+  agent tasks, concurrency ~4) when there are 3+ pages to update and the
+  updates are independent
 
 **Update `wiki/overview.md`**
 - Add the new source to the source count

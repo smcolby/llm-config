@@ -11,6 +11,7 @@ timeout = 5
 [harnesses.claude-code]
 mechanisms = ["hook"]
 verify_hook = "rtk hook claude"
+manual_setup = "rtk --version  # verify install; if 'rtk gain' fails, the name-colliding Rust Type Kit may be installed instead"
 
 [harnesses.copilot]
 mechanisms = ["hook"]
