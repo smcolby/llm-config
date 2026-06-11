@@ -17,7 +17,7 @@ REGISTRY_PATH = REPO / "tools/harnesses.toml"
 
 def load() -> dict:
     """Return the parsed registry TOML."""
-    with open(REGISTRY_PATH, "rb") as f:
+    with REGISTRY_PATH.open("rb") as f:
         return tomllib.load(f)
 
 

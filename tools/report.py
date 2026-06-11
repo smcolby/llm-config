@@ -11,7 +11,6 @@ Usage:
 
 import difflib
 import json
-import os
 import re
 import sys
 import tomllib
@@ -79,7 +78,7 @@ def check_symlink(src: Path, dst: Path) -> tuple[bool, str]:
     """Return (ok, detail). detail is the link target on success, error message on failure."""
     if not dst.is_symlink():
         return (False, "missing") if not dst.exists() else (False, "not a symlink")
-    link = os.readlink(dst)
+    link = str(dst.readlink())
     if not dst.exists():
         return False, f"dangling → {link}"
     if dst.resolve() != src.resolve():
@@ -118,7 +117,7 @@ def load_extensions() -> list[dict]:
         return []
     result = []
     for p in sorted(EXTENSIONS_DIR.glob("*.toml")):
-        with open(p, "rb") as f:
+        with p.open("rb") as f:
             result.append(tomllib.load(f))
     return result
 
@@ -382,7 +381,7 @@ def inspect_skills(errors: list, warnings: list):
             p = by_harness[harness]
 
             if p.is_symlink():
-                link = os.readlink(p)
+                link = str(p.readlink())
                 link_short = link.replace(str(HOME), "~")
                 if p.exists():
                     harness_row(harness, s_ok(short(p), f"→ {link_short}"))
@@ -424,7 +423,7 @@ def inspect_models(errors: list, warnings: list):
         manifest_path = model_file.with_suffix(".toml")
         manifest: dict = {}
         if manifest_path.exists():
-            with open(manifest_path, "rb") as f:
+            with manifest_path.open("rb") as f:
                 manifest = tomllib.load(f)
         expected_harnesses: list[str] = manifest.get("harnesses", [])
         not_applicable: dict[str, str] = manifest.get("not_applicable", {})

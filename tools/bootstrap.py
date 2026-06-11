@@ -33,7 +33,7 @@ WIRE_EXTENSIONS = REPO / "tools/wire_extensions.py"
 
 def link(src: Path, dst: Path) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
-    if dst.is_symlink() and os.readlink(dst) == str(src):
+    if dst.is_symlink() and dst.readlink() == src:
         print(f"  ok   {dst}")
         return
     if dst.is_symlink() or dst.is_file():
@@ -102,7 +102,7 @@ def wire_skill(skill: str) -> None:
     if src is None:
         print(f"  WARN skill '{skill}' not found in shared/skills/ or llm-wiki — skipping")
         return
-    for name, conf in registry.harnesses().items():
+    for conf in registry.harnesses().values():
         if "skill_dir" not in conf or not harness_installed(conf):
             continue
         link(src, expand(conf["skill_dir"]) / skill)

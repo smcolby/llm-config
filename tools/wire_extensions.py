@@ -14,7 +14,6 @@ Called by bootstrap.py. Pass --check to report drift without writing;
 
 import argparse
 import json
-import os
 import tomllib
 from pathlib import Path
 from typing import NamedTuple
@@ -65,7 +64,7 @@ def expand(p: str) -> Path:
 
 def link(src: Path, dst: Path) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
-    if dst.is_symlink() and os.readlink(dst) == str(src):
+    if dst.is_symlink() and dst.readlink() == src:
         print(f"  ok   {dst}")
     else:
         if dst.exists() or dst.is_symlink():
@@ -146,7 +145,7 @@ def _mcp_content(harness: str) -> str:
     """
     servers: dict[str, dict] = {}
     for ext_file in sorted(EXTENSIONS_DIR.glob("*.toml")):
-        with open(ext_file, "rb") as f:
+        with ext_file.open("rb") as f:
             ext = tomllib.load(f)
         mcp = ext.get("mcp")
         if not mcp:
@@ -161,7 +160,7 @@ def _mcp_content(harness: str) -> str:
 def generate_hooks(check: bool) -> int:
     drift = 0
     for ext_file in sorted(EXTENSIONS_DIR.glob("*.toml")):
-        with open(ext_file, "rb") as f:
+        with ext_file.open("rb") as f:
             ext = tomllib.load(f)
         hooks = ext.get("hooks", [])
         if not hooks:
@@ -205,7 +204,7 @@ def collect_hooks_drift() -> list[DriftEntry]:
     """Return drift status for every hook/extension file derived from shared/extensions/*.toml."""
     result: list[DriftEntry] = []
     for ext_file in sorted(EXTENSIONS_DIR.glob("*.toml")):
-        with open(ext_file, "rb") as f:
+        with ext_file.open("rb") as f:
             ext = tomllib.load(f)
         hooks = ext.get("hooks", [])
         if not hooks:
@@ -238,7 +237,7 @@ def collect_mcp_drift() -> list[DriftEntry]:
 def remove_harness_links(harness: str) -> None:
     """Unlink every manifest-declared symlink for one harness."""
     for ext_file in sorted(EXTENSIONS_DIR.glob("*.toml")):
-        with open(ext_file, "rb") as f:
+        with ext_file.open("rb") as f:
             ext = tomllib.load(f)
         hconf = ext.get("harnesses", {}).get(harness)
         if hconf is None:
@@ -278,7 +277,7 @@ def main() -> None:
 
     manual_steps: list[str] = []
     for ext_file in sorted(EXTENSIONS_DIR.glob("*.toml")):
-        with open(ext_file, "rb") as f:
+        with ext_file.open("rb") as f:
             ext = tomllib.load(f)
         print(f"  {ext['name']}")
         for harness, hconf in ext.get("harnesses", {}).items():
