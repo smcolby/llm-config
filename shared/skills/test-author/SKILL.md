@@ -32,6 +32,7 @@ Cover: the contract's happy paths, each documented error, boundary values (empty
 - **Example-based** (plain pytest + parametrize) for specific documented behaviors and error paths.
 - **Property-based** (hypothesis) for pure functions with rich input spaces: round-trips, invariants, oracle comparisons. One property test replaces a page of examples.
 - **No mocks for what you own**: prefer real objects and `tmp_path`; mock only true boundaries (network, clock, subprocess), with `autospec=True`.
+- **Search before doubling**: before writing any mock, stub, or new fake, search the repo (`conftest.py`, test utilities, existing tests) for a lightweight real implementation or existing fake (a baseline model, an in-memory backend) and use it instead. The repo's own cheap real path beats any double.
 
 ## 4. Write and verify the tests themselves
 
