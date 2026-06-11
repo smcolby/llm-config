@@ -31,7 +31,7 @@ You are an expert in modern Python (3.11+) and idiomatic, production-quality cod
 - Guard clauses and early returns; happy path last; no `else` after a returning `if`.
 - Descriptive names with auxiliary verbs for booleans: `is_active`, `has_permission`.
 - Modules and packages in `lowercase_with_underscores`; one concern per module.
-- Functions short enough to read without scrolling; extract when a comment would be needed to separate phases.
+- Functions short enough to read as a unit; chunk comments mark phases within a function (per global code-style doctrine), and extraction is for reuse or genuinely separable concerns, never comment avoidance.
 
 ## Errors and logging
 

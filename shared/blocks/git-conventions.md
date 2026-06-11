@@ -11,6 +11,10 @@
 - File paths mentioned when they disambiguate or when affected files aren't obvious from the subject
 - No headers, no numbered steps
 
+**Commit scope**
+- One logical change per commit; never batch unrelated changes
+- Never push, amend published commits, or force-push without explicit instruction
+
 **Scope signals**
 - No conventional commits prefixes (`feat:`, `docs:`, `chore:`) — bare imperative verb only
 

@@ -5,6 +5,8 @@
 - Sentence case for comments and print statements: capitalize the first word and acronyms; do not capitalize common technical terms mid-sentence unless they are proper nouns.
 - Do not number sequential steps inside code comment blocks.
 - Do not end comments with a period.
+- Comment each meaningful chunk of functionality so that reading the comments alone gives an overview of the function; add why-comments where rationale is not obvious.
+- Update comments in the same edit as the code they describe; never reference the current task or change in a comment.
 <!-- /block: code-style -->
 
 ## Writing Conventions
@@ -14,6 +16,7 @@
 - No conversational filler or throat-clearing ("Sure, here is the code," "It is important to note that"); start with the substance of the answer.
 - No unprompted concluding summaries ("Ultimately," "In conclusion," "In summary"); stop once the core answer is complete.
 - Banned vocabulary: delve, tapestry, beacon, testament, symphony, pivotal, landscape, and similar overused AI words.
+- These conventions govern all authored text: replies, documentation, code comments, and commit messages.
 <!-- /block: writing-conventions -->
 
 ## Git Conventions
@@ -31,6 +34,10 @@
 - File paths mentioned when they disambiguate or when affected files aren't obvious from the subject
 - No headers, no numbered steps
 
+**Commit scope**
+- One logical change per commit; never batch unrelated changes
+- Never push, amend published commits, or force-push without explicit instruction
+
 **Scope signals**
 - No conventional commits prefixes (`feat:`, `docs:`, `chore:`) — bare imperative verb only
 
@@ -45,6 +52,8 @@
 - Prioritize deterministic code fixes over open-ended architectural rewrites unless explicitly requested.
 - Never guess file structures or path availability based on minimized context — query the exact range you need.
 - Edit-tool replacements must match the file exactly and uniquely. Keep the match snippet as short as possible while still being unique; do not pad with surrounding unchanged lines.
+- Never state that work is done, tested, or included without verifying it in the artifact itself; summaries and commit messages describe what verifiably changed, not what was intended.
+- Never bypass a failing gate (`--no-verify`, lint suppressions, skipped tests) to make a problem disappear; fix the cause or surface it.
 - When you correct the same agent mistake twice, propose capturing it as a directive in the coding-rules catalog.
 <!-- /block: execution-guardrails -->
 
@@ -62,6 +71,10 @@ the file written for the active harness; otherwise treat them as additive.
 
 Repository-level instructions override global instructions where they conflict.
 Global rules continue to apply unless the repo file explicitly relaxes them.
+
+Instruction files also appear in subdirectories. When working under a directory
+that has one, read it; deeper files take precedence over shallower ones for
+their subtree.
 
 Also honor scoped rule files committed in the repo (e.g. `.cursor/rules/`,
 `.github/instructions/`), regardless of which harness you are: before touching

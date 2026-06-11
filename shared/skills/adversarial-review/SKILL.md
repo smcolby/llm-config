@@ -24,7 +24,7 @@ Run in order; do not merge passes. Note findings as you go, with file and line r
 1. **Correctness** — does the change do what it claims? Trace the happy path and every branch. Hunt: off-by-one, None/empty handling, error paths that swallow, state mutations with non-local effects, concurrency assumptions.
 2. **Security** — apply the python-security rule (or language equivalent) even when not auto-scoped: boundary validation, secrets in code or logs, subprocess and deserialization safety, injection surfaces.
 3. **Tests** — do tests exist for the changed behavior, do they comply with the testing rule, and would they fail if the change were reverted? A test that cannot fail is a finding. Tautological tests, unbound mocks, and inter-test dependence are findings.
-4. **Docs** — docstrings present and accurate for changed public surface, examples still execute, prose docs and changelog updated in this change if behavior moved.
+4. **Docs** — docstrings present and accurate for changed public surface, examples still execute, prose docs and changelog updated in this change if behavior moved. Comments must match the code they annotate; a stale or contradicting comment is a finding.
 5. **Style and rules sweep** — remaining directives from active rules and doctrine not covered above. Do not re-litigate what a configured linter already enforces; a passing gate is a passed check.
 
 ## Severity rubric

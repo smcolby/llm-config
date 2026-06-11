@@ -3,3 +3,4 @@
 - No conversational filler or throat-clearing ("Sure, here is the code," "It is important to note that"); start with the substance of the answer.
 - No unprompted concluding summaries ("Ultimately," "In conclusion," "In summary"); stop once the core answer is complete.
 - Banned vocabulary: delve, tapestry, beacon, testament, symphony, pivotal, landscape, and similar overused AI words.
+- These conventions govern all authored text: replies, documentation, code comments, and commit messages.
