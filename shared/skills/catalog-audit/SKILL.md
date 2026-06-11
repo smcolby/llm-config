@@ -10,7 +10,7 @@ reviewed: 2026-06
 
 # Catalog Audit
 
-Semantic staleness review of the catalog (the llm-config repository; resolve it via the real path of this SKILL.md). `verify.py` catches structural drift; this skill catches content rot. Run on a calendar interval, and off-schedule whenever the model or a pinned stack changes: treat a model upgrade exactly like a dependency upgrade.
+Semantic staleness review of the catalog (the llm-config repository; resolve it via the real path of this SKILL.md). `verify.py` catches structural drift; this skill catches content rot. Run on a calendar interval, off-schedule whenever the model or a pinned stack changes (treat a model upgrade exactly like a dependency upgrade), and after structural changes to the repo (a new tool, harness, content type, or directory) that the README and AGENTS files describe.
 
 ## Passes
 
@@ -22,6 +22,7 @@ Semantic staleness review of the catalog (the llm-config repository; resolve it 
 6. **Promotion / demotion**: flag doctrine content used only in narrow contexts (demote to a rule) and rule directives that proved necessary in every session (promote, paired with a demotion since doctrine has a hard ceiling). Check the doctrine budget headroom printed by `verify.py`.
 7. **Conflicts**: search for directives that contradict each other across layers. Precedence (guardrails inviolable; narrower scope wins) resolves application order, but a standing contradiction is a catalog bug: rewrite one side.
 8. **Provenance stamps**: in seeded repositories you know about, compare deployed rule copies' provenance stamps against the catalog; long-stale stamps mean a reseed is due (repo-seed skill).
+9. **README and AGENTS drift**: re-check `README.md` and `AGENTS.md` against actual repo state. Confirm the layout tree matches the real directories, every documented command and path exists, and the skill or content inventory matches what is present. Anything these files duplicate from live tooling is rot waiting to happen: if a tool already reports it (e.g. `report.py` for wiring and inventory), the prose should point at the tool, not restate its output. Flag stale prose and embedded inventories that should be replaced with a pointer.
 
 ## Output
 

@@ -6,7 +6,7 @@
 - Do not number sequential steps inside code comment blocks.
 - Do not end comments with a period.
 - Comment each meaningful chunk of functionality so that reading the comments alone gives an overview of the function; add why-comments where rationale is not obvious.
-- Update comments in the same edit as the code they describe; never reference the current task or change in a comment.
+- Update comments and docstrings in the same edit as the code they describe; never reference the current task or change in a comment.
 <!-- /block: code-style -->
 
 ## Writing Conventions
