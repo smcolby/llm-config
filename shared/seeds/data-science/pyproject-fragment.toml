@@ -1,0 +1,39 @@
+# Hardened companion config from llm-config seeds (enforcement pairing).
+# Merge into the repo's pyproject.toml; these gates pair with the deployed
+# lang/python rules — directives enforced here stay out of rule prose.
+
+[tool.ruff]
+target-version = "py311"
+line-length = 99
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W", # pycodestyle + pyflakes baseline
+    "I",           # import sorting
+    "N",           # pep8-naming
+    "UP",          # deprecated aliases and syntax upgrades
+    "B",           # bugbear: mutable defaults, useless expressions
+    "PT",          # pytest style: fixtures, parametrize, assertions
+    "PTH",         # pathlib over os.path
+    "S",           # bandit: shell=True, hardcoded secrets, unsafe yaml/pickle
+    "D",           # pydocstyle
+    "TID",         # banned-api enforcement
+]
+ignore = ["D105", "D107"] # magic-method and __init__ docstrings
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"unittest.TestCase".msg = "Use plain pytest functions (python-testing rule)"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "D"]     # assert usage and docstrings not required in tests
+"notebooks/**" = ["D", "E402"] # docstrings and import order not required in notebooks
+
+[tool.pyright]
+typeCheckingMode = "strict"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

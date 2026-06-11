@@ -1,0 +1,19 @@
+# Seed manifest — consumed by the repo-seed skill
+archetype = "python-service"
+
+[axes]
+purpose = "service"
+language = "python"
+
+# canonical rules to render into the repo (paths relative to shared/rules/)
+rules = [
+    "lang/python/core.md",
+    "lang/python/testing.md",
+    "lang/python/docs.md",
+    "lang/python/packaging.md",
+    "lang/python/security.md",
+]
+
+# stack rules are offered by repo-seed when the matching dependency is
+# detected (none authored yet; ingest as needed)
+stack_rules = []

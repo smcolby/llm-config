@@ -1,0 +1,16 @@
+# Seed template — copy to .pre-commit-config.yaml and run `pre-commit autoupdate`
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.16
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright
+        entry: npx pyright
+        language: system
+        types: [python]
+        pass_filenames: false
