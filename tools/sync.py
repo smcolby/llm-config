@@ -7,7 +7,8 @@ Usage:
   python tools/sync.py --agents   # check agent body drift
   python tools/sync.py --agents --apply  # render agents from shared/agents/
   python tools/sync.py --rules    # validate rules + check router skill index
-  python tools/sync.py --all --apply     # blocks + agents + rules
+  python tools/sync.py --skills   # validate shared skill frontmatter
+  python tools/sync.py --all --apply     # blocks + agents + rules + skills
 """
 
 import argparse
@@ -22,6 +23,7 @@ REPO = registry.REPO
 BLOCKS_DIR = REPO / "shared/blocks"
 AGENTS_DIR = REPO / "shared/agents"
 RULES_DIR = REPO / "shared/rules"
+SKILLS_DIR = REPO / "shared/skills"
 ROUTER_SKILL = REPO / "shared/skills/rules/SKILL.md"
 HARNESSES_DIR = REPO / "harnesses"
 
@@ -237,19 +239,50 @@ def check_rules(apply: bool) -> int:
     return 1
 
 
+def check_skills() -> int:
+    """Schema-validate shared skill frontmatter. Exits non-zero on errors."""
+    import yaml
+
+    errors: list[str] = []
+    for skill_md in sorted(SKILLS_DIR.glob("*/SKILL.md")):
+        rel = skill_md.relative_to(REPO)
+        m = FM_RE.match(skill_md.read_text())
+        if not m:
+            errors.append(f"{rel}: missing frontmatter")
+            continue
+        fm = yaml.safe_load(m.group(1))
+        for field in ("name", "description"):
+            if not fm.get(field):
+                errors.append(f"{rel}: missing required field '{field}'")
+        if fm.get("name") and fm["name"] != skill_md.parent.name:
+            errors.append(f"{rel}: name '{fm['name']}' != directory '{skill_md.parent.name}'")
+        # the generated router's freshness is checked mechanically by check_rules
+        if skill_md != ROUTER_SKILL and not fm.get("reviewed"):
+            errors.append(f"{rel}: missing 'reviewed' (required for playbooks)")
+    if errors:
+        for e in errors:
+            print(f"  ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true", help="apply changes in place")
     parser.add_argument("--agents", action="store_true", help="check/render agent files")
     parser.add_argument("--rules", action="store_true", help="validate rules + router index")
-    parser.add_argument("--all", dest="all_", action="store_true", help="blocks + agents + rules")
+    parser.add_argument("--skills", action="store_true", help="validate skill frontmatter")
+    parser.add_argument(
+        "--all", dest="all_", action="store_true", help="blocks + agents + rules + skills"
+    )
     parser.add_argument("--harness", help="limit to one harness")
     args = parser.parse_args()
 
-    only_flags = args.agents or args.rules
+    only_flags = args.agents or args.rules or args.skills
     do_blocks = not only_flags or args.all_
     do_agents = args.agents or args.all_
     do_rules = args.rules or args.all_
+    do_skills = args.skills or args.all_
 
     drift = 0
     if do_blocks:
@@ -261,6 +294,9 @@ def main():
     if do_rules:
         print("Checking rules...")
         drift += check_rules(args.apply)
+    if do_skills:
+        print("Checking skills...")
+        drift += check_skills()
 
     if drift == 0:
         print("OK — all harnesses in sync")
