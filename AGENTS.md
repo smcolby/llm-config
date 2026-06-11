@@ -1,4 +1,4 @@
-# Project Context — enchiridion
+# Project Context: enchiridion
 
 This repository is the single source of truth for AI coding-assistant configuration across three harnesses (pi, Claude Code, Copilot CLI). Content is authored once in `shared/`, propagated by the `tools/` scripts, and deployed through symlinks. It implements two patterns documented in `patterns/`: `cross-harness-config-pattern.md` (distribution) and `agentic-infrastructure-pattern.md` (content architecture). Read the README for usage and the patterns for rationale.
 
