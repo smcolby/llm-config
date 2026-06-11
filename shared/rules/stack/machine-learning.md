@@ -1,22 +1,23 @@
 ---
 name: machine-learning
 description: >
-  Machine learning training methodology: data leakage prevention, gradient
-  hygiene, uncertainty and metric logging, imbalance-aware evaluation, and
-  hyperparameter configuration. Apply when writing or reviewing training
-  loops, dataset splits, loss functions, or model evaluation code.
+  Machine learning methodology across the lifecycle: data leakage,
+  training dynamics, evaluation discipline, train/serve consistency, and
+  reproducibility. Apply when writing or reviewing data splits, training
+  loops, loss functions, model evaluation, or inference and serving code.
 tier: requested
 stack: ["torch>=2"]
 reviewed: 2026-06
 ---
 
-You are an expert in deep learning training dynamics, uncertainty quantification, and evaluation methodology.
+You are an expert in machine learning methodology across the lifecycle: data handling, training dynamics, evaluation, and deployment.
 
 ## Principles
 
 1. A result computed on leaked data is not a result.
 2. Evaluation must be able to detect the failure you care about; aggregate loss hides minority-class collapse.
-3. A run that cannot be reproduced from configuration does not exist.
+3. Training and serving must share one preprocessing path; a divergence between them silently degrades a model that tested well.
+4. A run that cannot be reproduced from configuration does not exist.
 
 ## Data discipline
 
@@ -31,9 +32,30 @@ You are an expert in deep learning training dynamics, uncertainty quantification
 
 ## Evaluation
 
-- Report per-class and per-cluster metrics alongside global aggregates; surface degradation on minority classes and underrepresented regions explicitly.
+- Hold the test set out until the end; it is touched once, after model selection, never used for tuning.
+- Choose metrics that match the decision the model serves (precision/recall, AUPRC, or calibration, not accuracy on imbalanced data); report per-class and per-cluster metrics alongside global aggregates.
+- Compare against a baseline (a trivial predictor or prior model); an absolute metric without a baseline is uninterpretable.
+- Calibrate and check probabilistic outputs; a model's confidence is a claim to verify, not to assume.
 - Evaluation paths run under `torch.no_grad()` (or `inference_mode`) with `model.eval()`.
 
-## Configuration
+## Inference and serving
 
-- Hyperparameters (learning rate, dropout, early-stopping patience, batch size, seeds) live in a single configuration object surfaced at the entry point, never hardcoded inside execution blocks.
+- Apply the exact preprocessing used in training at inference; reuse one code path rather than reimplementing it, so train/serve skew cannot creep in.
+- Version the model artifact together with its preprocessing and the code that produced it; a checkpoint without its pipeline is not deployable.
+- Validate input schema and distribution at the serving boundary; flag out-of-distribution inputs rather than scoring them silently.
+
+## Configuration and reproducibility
+
+- Hyperparameters (learning rate, dropout, early-stopping patience, batch size) live in a single configuration object surfaced at the entry point, never hardcoded inside execution blocks.
+- Seed every RNG (framework, NumPy, Python) and prefer deterministic ops where feasible; an unseeded run is not reproducible.
+- Version data, code, configuration, and environment together so a result can be regenerated; track experiments rather than relying on memory.
+
+## Anti-hallucination
+
+| Banned | Correct |
+|---|---|
+| using the test set for tuning or model selection | hold it out; touch once, after selection |
+| reporting accuracy on imbalanced data | a metric matching the decision (precision/recall, AUPRC, calibration) |
+| divergent preprocessing in training vs inference | one shared preprocessing path (no train/serve skew) |
+| an absolute metric with no baseline | compare against a trivial or prior baseline |
+| unseeded runs or nondeterministic evaluation | seed all RNGs; deterministic ops where feasible |
