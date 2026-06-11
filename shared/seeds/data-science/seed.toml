@@ -4,6 +4,7 @@ archetype = "data-science"
 [axes]
 purpose = "data-science"
 language = "python"
+env_manager = "uv"  # default; repo-seed overrides per detection/answer
 
 # canonical rules to render into the repo (paths relative to shared/rules/)
 rules = [

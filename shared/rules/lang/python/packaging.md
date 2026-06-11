@@ -1,12 +1,14 @@
 ---
 name: python-packaging
 description: >
-  Python project layout and dependency management: uv environments,
-  pyproject.toml as single source, src layout, lockfile policy, and the
+  Python project layout and dependency management: environment managers
+  (uv default; pixi or conda where the repo declares them),
+  pyproject.toml as single source, flat layout, lockfile policy, and the
   ruff/pyright standing gate. Apply when creating or modifying
-  pyproject.toml, lockfiles, requirements files, or project scaffolding.
+  pyproject.toml, lockfiles, environment.yml, requirements files, or
+  project scaffolding.
 tier: scoped
-scope: ["**/pyproject.toml", "**/uv.lock", "**/requirements*.txt", "**/setup.py", "**/setup.cfg"]
+scope: ["**/pyproject.toml", "**/uv.lock", "**/requirements*.txt", "**/setup.py", "**/setup.cfg", "**/environment.yml", "**/pixi.toml"]
 stack: ["uv>=0.5"]
 reviewed: 2026-06
 ---
@@ -21,10 +23,10 @@ You are an expert in modern Python packaging and project structure.
 
 ## Environment and dependencies
 
-- uv for everything: `uv venv` to create, `uv add` / `uv remove` to manage dependencies, `uv run` to execute, `uv sync` to reproduce.
-- Dependencies declared in `pyproject.toml` with sensible lower bounds; exact pins live in `uv.lock`, committed.
-- Dev tooling (pytest, ruff, pyright, pre-commit) in a `dev` dependency group, never mixed into runtime dependencies.
-- Never `pip install` into a project environment ad hoc; if it is needed, it is declared.
+- Default manager for new projects: uv (`uv venv` to create, `uv add` / `uv remove` to manage, `uv run` to execute, `uv sync` to reproduce). A repo that declares another manager (pixi, conda) in its `AGENTS.md` follows that declaration; the discipline below applies under any manager.
+- Dependencies declared in one manifest (`pyproject.toml` by default; `pixi.toml` or `environment.yml` where declared) with sensible lower bounds; exact pins live in a committed lockfile (`uv.lock`, `pixi.lock`, or conda-lock output).
+- Dev tooling (pytest, ruff, pyright, pre-commit) in a dev dependency group, never mixed into runtime dependencies.
+- Never install into a project environment ad hoc (`pip install`, `conda install`); declare in the manifest first, then sync.
 
 ## Layout
 
@@ -42,7 +44,8 @@ You are an expert in modern Python packaging and project structure.
 
 | Banned | Correct |
 |---|---|
-| `requirements.txt` as the source of truth | `pyproject.toml` + `uv.lock` |
-| `python -m venv` + `pip` in new projects | `uv venv` + `uv add` |
+| `requirements.txt` as the source of truth | the repo's declared manifest + committed lockfile (default `pyproject.toml` + `uv.lock`) |
+| `python -m venv` + `pip` in new projects | `uv venv` + `uv add` (or the repo's declared manager) |
+| ad-hoc `pip install` / `conda install` into a shared env | declare in the manifest, then sync |
 | `setup.py develop` / `pip install -e .` | `uv sync` (or `uv pip install -e .` only when an editable install is genuinely required) |
 | `[tool.poetry]` sections in new projects | PEP 621 `[project]` table |
