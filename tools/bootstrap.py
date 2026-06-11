@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""bootstrap.py — wire all llm-config symlinks and generated files.
+"""bootstrap.py — wire all enchiridion symlinks and generated files.
 
 Reads the harness registry (tools/harnesses.toml) and wires every installed
 harness: instruction files, configs, agents, skills, and extensions. Safe to
@@ -210,7 +210,7 @@ def main() -> None:
         wire_only(args.only)
         return
 
-    print("=== llm-config bootstrap ===")
+    print("=== enchiridion bootstrap ===")
     print(f"Repo: {REPO}\n")
 
     for name, conf in registry.harnesses().items():

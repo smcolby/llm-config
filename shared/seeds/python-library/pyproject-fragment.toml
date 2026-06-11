@@ -1,4 +1,4 @@
-# Hardened companion config from llm-config seeds (enforcement pairing).
+# Hardened companion config from enchiridion seeds (enforcement pairing).
 # Merge into the repo's pyproject.toml; these gates pair with the deployed
 # lang/python rules — directives enforced here stay out of rule prose.
 

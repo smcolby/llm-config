@@ -1,4 +1,4 @@
-# llm-config
+# enchiridion
 
 Single source of truth for AI coding-assistant configuration across three harnesses: **pi**, **Claude Code**, and **GitHub Copilot CLI**. Behavioral content is authored once in `shared/`, propagated to every harness by sync tooling, and deployed through symlinks, so committing a change is deploying it. Drift between harnesses is a verifiable state caught by pre-commit rather than a slow surprise.
 
@@ -107,8 +107,8 @@ Two standing habits keep the catalog evidence-based: corrections made twice get 
 # install harnesses first — each must exist before wiring
 npm install -g @anthropic-ai/claude-code @earendil-works/pi-coding-agent @github/copilot
 
-git clone git@github.com:smcolby/llm-config.git ~/repos/llm-config
-python ~/repos/llm-config/tools/bootstrap.py   # symlinks everything; prints manual steps
+git clone git@github.com:smcolby/enchiridion.git ~/repos/enchiridion
+python ~/repos/enchiridion/tools/bootstrap.py   # symlinks everything; prints manual steps
 pip install pre-commit
 pre-commit install --hook-type pre-commit --hook-type commit-msg
 ```

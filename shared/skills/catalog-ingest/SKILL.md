@@ -2,7 +2,7 @@
 name: catalog-ingest
 description: >
   Adopt external content (community rules, vendor skills, blog checklists,
-  style guides) into the llm-config catalog: classify, normalize, harden,
+  style guides) into the enchiridion catalog: classify, normalize, harden,
   dedupe, pin, and record provenance. Use when asked to add a source,
   rule set, or best-practices document to the catalog.
 reviewed: 2026-06
@@ -10,7 +10,7 @@ reviewed: 2026-06
 
 # Catalog Ingest
 
-Procedure for bringing external content into the catalog. The catalog lives in the llm-config repository (resolve it via the real path of this SKILL.md). Most external content should die here rather than enter; ingest is the de-bloat filter.
+Procedure for bringing external content into the catalog. The catalog lives in the enchiridion repository (resolve it via the real path of this SKILL.md). Most external content should die here rather than enter; ingest is the de-bloat filter.
 
 ## Procedure
 

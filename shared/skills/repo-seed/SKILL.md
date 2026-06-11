@@ -2,7 +2,7 @@
 name: repo-seed
 description: >
   Stand up or refresh a repository's agentic infrastructure from the
-  llm-config catalog: detect languages and stack, ask the unresolved axis
+  enchiridion catalog: detect languages and stack, ask the unresolved axis
   questions, render provenance-stamped rules, and instantiate AGENTS.md
   plus tool configs from a seed archetype. Use when creating a new repo,
   adding agent config to an existing repo, or bringing a seeded repo up to
@@ -12,7 +12,7 @@ reviewed: 2026-06
 
 # Repo Seed / Reseed
 
-Deploys catalog content into a repository as committable, provenance-stamped copies. The catalog lives in the llm-config repository (resolve it via the real path of this SKILL.md); seeds live in `shared/seeds/`, rules in `shared/rules/`, and the renderer is `tools/render_rules.py`.
+Deploys catalog content into a repository as committable, provenance-stamped copies. The catalog lives in the enchiridion repository (resolve it via the real path of this SKILL.md); seeds live in `shared/seeds/`, rules in `shared/rules/`, and the renderer is `tools/render_rules.py`.
 
 ## Seed (new or unseeded repo)
 

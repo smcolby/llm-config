@@ -1,7 +1,7 @@
 ---
 name: catalog-audit
 description: >
-  Periodic health review of the llm-config catalog: stale rules, outdated
+  Periodic health review of the enchiridion catalog: stale rules, outdated
   stack pins, hardening opportunities, promotion/demotion candidates, and
   doctrine budget. Use on a schedule, after a model upgrade, or after a
   major dependency version bump.
@@ -10,7 +10,7 @@ reviewed: 2026-06
 
 # Catalog Audit
 
-Semantic staleness review of the catalog (the llm-config repository; resolve it via the real path of this SKILL.md). `verify.py` catches structural drift; this skill catches content rot. Run on a calendar interval, off-schedule whenever the model or a pinned stack changes (treat a model upgrade exactly like a dependency upgrade), and after structural changes to the repo (a new tool, harness, content type, or directory) that the README and AGENTS files describe.
+Semantic staleness review of the catalog (the enchiridion repository; resolve it via the real path of this SKILL.md). `verify.py` catches structural drift; this skill catches content rot. Run on a calendar interval, off-schedule whenever the model or a pinned stack changes (treat a model upgrade exactly like a dependency upgrade), and after structural changes to the repo (a new tool, harness, content type, or directory) that the README and AGENTS files describe.
 
 ## Passes
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""report.py — system topology and health check for llm-config.
+"""report.py — system topology and health check for enchiridion.
 
 Shows all shared components and how each manifests per harness, verifies all
 wiring (symlinks, fences, renders), and surfaces harness-specific content for
@@ -626,7 +626,7 @@ def main():
 
     console.print()
     console.rule(
-        "[bold bright_blue]llm-config system inspection[/bold bright_blue]",
+        "[bold bright_blue]enchiridion system inspection[/bold bright_blue]",
         style="bright_blue",
     )
 
