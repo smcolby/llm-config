@@ -17,7 +17,16 @@
 # its entry here.
 
 # shared skills wired into every harness that declares a skill_dir
-skills = ["wiki-ops", "rules"]
+skills = [
+    "wiki-ops",
+    "rules",
+    "adversarial-review",
+    "test-author",
+    "doc-author",
+    "catalog-ingest",
+    "catalog-audit",
+    "repo-seed",
+]
 
 # hard ceiling for total always-on doctrine (shared/blocks/*.md), in
 # approximate tokens; enforced by verify.py
