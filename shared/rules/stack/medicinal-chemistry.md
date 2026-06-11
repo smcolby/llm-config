@@ -1,5 +1,5 @@
 ---
-name: medicinal-chemist
+name: medicinal-chemistry
 description: >
   Medicinal chemistry and SAR data conventions: potency units and log
   transforms, censored assay values, cross-assay comparability, structural

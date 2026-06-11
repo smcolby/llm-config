@@ -1,5 +1,5 @@
 ---
-name: ml-training
+name: machine-learning
 description: >
   Machine learning training methodology: data leakage prevention, gradient
   hygiene, uncertainty and metric logging, imbalance-aware evaluation, and

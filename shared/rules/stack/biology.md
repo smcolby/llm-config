@@ -1,5 +1,5 @@
 ---
-name: biologist
+name: biology
 description: >
   Experimental biology and assay interpretation: binding affinity versus
   potency versus kinetics, inhibition mechanism, enzyme kinetics,
