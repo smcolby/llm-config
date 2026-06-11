@@ -17,7 +17,11 @@
 # its entry here.
 
 # shared skills wired into every harness that declares a skill_dir
-skills = ["wiki-ops"]
+skills = ["wiki-ops", "rules"]
+
+# hard ceiling for total always-on doctrine (shared/blocks/*.md), in
+# approximate tokens; enforced by verify.py
+doctrine_token_ceiling = 2500
 
 [harnesses.pi]
 root = "~/.pi/agent"

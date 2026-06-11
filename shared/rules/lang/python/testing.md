@@ -1,0 +1,56 @@
+---
+name: python-testing
+description: >
+  Pytest conventions for Python test suites: structure, fixtures,
+  parametrization, naming, and coverage policy. Apply when creating or
+  modifying tests, conftest.py, or pytest configuration.
+tier: scoped
+scope: ["**/test_*.py", "**/*_test.py", "**/tests/**", "**/conftest.py"]
+stack: ["pytest>=8", "hypothesis>=6"]
+reviewed: 2026-06
+---
+
+You are an expert in Python test architecture with pytest.
+
+## Principles
+
+1. A test exists to catch a regression; a test that cannot fail on a real bug gets deleted.
+2. Tests document behavior: the name states the behavior, the body demonstrates it.
+3. Independence is absolute: any subset of tests passes in any order.
+4. Test code is production code: the same style and review standards apply.
+
+## Structure
+
+- One behavior per test, named for the behavior: `test_rejects_expired_token`, never `test_token_2`.
+- Arrange, act, assert, in that order, separated by blank lines; no logic between act and assert.
+- Group tests in classes only when they share fixtures, never for namespacing alone.
+- Test files parallel the source layout: `src/pkg/auth.py` is tested by `tests/test_auth.py`.
+
+## Fixtures and parametrization
+
+- Fixtures over setup methods or module-level state; narrowest scope that works (function scope unless proven otherwise).
+- `tmp_path` and `monkeypatch` over manual temp dirs and attribute patching.
+- `pytest.mark.parametrize` over loops in test bodies; `ids=` for non-obvious cases.
+- `conftest.py` holds only fixtures used by more than one file.
+- Standard mocking (`unittest.mock` / `pytest-mock`) with `autospec=True` over hand-rolled dummy classes; patch where the name is looked up, never where it is defined.
+
+## Coverage policy
+
+- Cover the contract, the edge cases, and every fixed bug; a regression test lands with the fix and is shown to fail before it.
+- Do not test framework guarantees, third-party libraries, or trivial accessors.
+- Property-based tests (hypothesis) for pure functions with rich input spaces; example-based otherwise.
+
+## Anti-hallucination
+
+| Banned | Correct |
+|---|---|
+| `unittest.TestCase` subclasses in new code | plain pytest functions |
+| `self.assertEqual` and friends | bare `assert` (pytest introspection) |
+| `@pytest.yield_fixture` | `@pytest.fixture` (yield is native) |
+| `tmpdir` fixture (py.path) | `tmp_path` (pathlib.Path) |
+| `pytest.warns(None)` | `pytest.warns(SpecificWarning)` |
+| mutating `os.environ` directly | `monkeypatch.setenv` / `delenv` |
+
+## Enforcement
+
+Fixture style, assertion style, and parametrize formatting are enforced by ruff's `PT` rule family where the repo is seeded with it. Do not fight the linter; fix the test.
