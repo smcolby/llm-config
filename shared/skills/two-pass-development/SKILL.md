@@ -27,7 +27,7 @@ A strict two-pass subroutine with persona switching and user-approval gates. The
 
 ## Pass 2: Critique and refinement
 
-5. **[CRITIC]** Audit the new codebase state per the Critic persona (adversarial-review skill + active rules). For domain-heavy changes, run the matching domain reviewer alongside: Machine Learning Expert for training loops and model architecture, Chemoinformatician for molecular data pipelines, Biologist for binding, inhibition, and cellular-assay interpretation, Medicinal Chemist for SAR and bioactivity data.
+5. **[CRITIC]** Audit the new codebase state per the Critic persona (adversarial-review skill + active rules). For domain-heavy changes, run the matching domain reviewer alongside: Machine Learning Expert for training loops and model architecture, Medicinal Chemist for SAR and bioactivity data.
 6. **[PLANNER]** If rejected, produce a Refinement Plan addressing the exact failures cited.
 7. **USER REVIEW:** Present the Refinement Plan (or the clean bill of health). **STOP AND WAIT FOR EXPLICIT APPROVAL.**
 8. **[EXECUTOR + TESTER]** Apply the approved refinements and re-test.
