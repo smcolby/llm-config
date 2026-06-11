@@ -34,19 +34,30 @@ At most four questions, detected values offered as defaults:
 1. Purpose archetype: `python-library`, `python-cli`, `python-service`, or `data-science` (pick the closest; mixed repos take the dominant one).
 2. Strictness posture: adopt the seed's full gate config, or start lenient (gates warn, tighten later).
 3. Environment manager, only when detection is ambiguous or the repo is empty: uv (default), pixi, or conda. When conda is detected, confirm rather than assume: the team may be mid-migration.
-4. Target harness formats, only when none are detectable: Cursor project rules, Copilot instructions, neither (AGENTS.md only).
+4. Target harness formats, only when none are detectable: Cursor project rules, Copilot instructions, neither (AGENTS.md only). Note: for Claude Code and pi, scoped rules do not auto-activate from repo-local files; the global `rules` skill handles activation by description match. Only offer `.mdc` or `.instructions.md` rendering when Cursor or Copilot CLI is the primary harness.
 
 ### 3. Deploy per the selection matrix
 
 | Content | Action |
 |---|---|
 | Seed `AGENTS.md` | Instantiate from `shared/seeds/<archetype>/AGENTS.md`, filling project specifics; repo-owned after creation. Templates assume uv; when the env-manager axis resolves to pixi or conda, rewrite the Environment section for that manager while preserving the discipline (one declared manifest, a committed lockfile, no ad-hoc installs) |
-| `lang/*` rules for detected languages | Render per detected harness: `python tools/render_rules.py --format mdc --out <repo>/.cursor/rules <rule files>` and/or `--format copilot --out <repo>/.github/instructions` |
-| `stack/*` rules matching detected dependencies | Same rendering, after confirming with the user |
+| `lang/*` rules for detected languages | For Cursor: render `.mdc` via `python tools/render_rules.py --format mdc --out <repo>/.cursor/rules <rule files>`. For Copilot CLI: render `.instructions.md` via `--format copilot --out <repo>/.github/instructions`. For Claude Code or pi: the global `rules` skill activates rules by description match; instead, append a one-paragraph rules hint to the repo `AGENTS.md` naming the active rules (see note below) |
+| `stack/*` rules matching detected dependencies | Same per-harness treatment as lang rules, after confirming with the user |
 | Tool configs | Merge `shared/seeds/<archetype>/pyproject-fragment.toml` into the repo's `pyproject.toml` (never clobber existing sections; reconcile) and add the pre-commit config. The fragment is gate config only (ruff/pyright/pytest), valid under any environment manager |
 | Doctrine, playbooks, `task/*` rules | Never deployed; they stay global |
 
 Rendered rule copies carry a `provenance:` stamp (canonical path @ catalog commit) injected by the renderer; do not strip it.
+
+**Claude Code / pi AGENTS.md hint** (when no native glob activation is available): add a section to `AGENTS.md` such as:
+
+```markdown
+## Coding rules
+
+The following rules from the enchiridion catalog apply to this repo and are
+available via the `rules` skill: python-core, python-testing, python-docs,
+python-packaging (and any stack rules detected above). Load the `rules` skill
+and read the matching rule before editing files in scope.
+```
 
 ### 4. Close out
 
@@ -54,7 +65,7 @@ Run the repo's gates once (`ruff check`, `pyright`, `pytest` if tests exist) so 
 
 ## Reseed (already-seeded repo)
 
-1. Find deployed copies by their `provenance:` stamps (`.cursor/rules/`, `.github/instructions/`).
+1. Find deployed copies by their `provenance:` stamps (`.cursor/rules/` for Cursor, `.github/instructions/` for Copilot CLI). For Claude Code and pi repos, check the `AGENTS.md` rules hint section instead.
 2. For each, compare against the current canonical rule; collect diffs.
 3. Present diffs grouped by rule; the user approves per rule. Approved: re-render and re-stamp. Declined: add `diverged: true` to the copy's frontmatter so future reseeds stop re-proposing it.
 4. Re-run detection: new languages or dependencies since seeding mean new rules to offer; removed ones mean copies to retire.

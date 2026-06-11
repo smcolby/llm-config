@@ -5,6 +5,12 @@ Formats:
   mdc      Cursor project rules (.cursor/rules/<name>.mdc)
   copilot  Copilot path-scoped instructions (.github/instructions/<name>.instructions.md)
 
+These formats are only meaningful for harnesses that support native glob-scoped
+rule activation: Cursor (mdc) and Copilot CLI (copilot). Claude Code and pi do
+not auto-load repo-local rule files; for those harnesses the global `rules`
+skill handles activation by description match, and repo-seed appends a rules
+hint to AGENTS.md instead.
+
 Rendered copies carry a provenance stamp (canonical path @ catalog commit) so
 the repo-seed skill can detect drift between a seeded repository and the
 catalog. This module is also the rendering point for any future harness that
