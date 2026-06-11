@@ -20,5 +20,5 @@ that has one, read it; deeper files take precedence over shallower ones for
 their subtree.
 
 Also honor scoped rule files committed in the repo (e.g. `.cursor/rules/`,
-`.github/instructions/`), regardless of which harness you are: before touching
-files a rule's scope matches, read that rule.
+`.github/instructions/`, `.claude/rules/`), regardless of which harness you
+are: before touching files a rule's scope matches, read that rule.

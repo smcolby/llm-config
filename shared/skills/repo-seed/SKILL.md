@@ -41,22 +41,32 @@ At most four questions, detected values offered as defaults:
 | Content | Action |
 |---|---|
 | Seed `AGENTS.md` | Instantiate from `shared/seeds/<archetype>/AGENTS.md`, filling project specifics; repo-owned after creation. Templates assume uv; when the env-manager axis resolves to pixi or conda, rewrite the Environment section for that manager while preserving the discipline (one declared manifest, a committed lockfile, no ad-hoc installs) |
-| `lang/*` rules for detected languages | For Cursor: render `.mdc` via `python tools/render_rules.py --format mdc --out <repo>/.cursor/rules <rule files>`. For Copilot CLI: render `.instructions.md` via `--format copilot --out <repo>/.github/instructions`. For Claude Code (when repo-local rules were selected or detected): render via `--format claude --out <repo>/.claude/rules`; the renderer skips `requested`/`invoked` tiers, which have no Claude representation and stay with the `rules` skill. For pi: the global `rules` skill activates rules by description match; instead, append a one-paragraph rules hint to the repo `AGENTS.md` naming the active rules (see note below) |
+| `lang/*` rules for detected languages | For Cursor: render `.mdc` via `python tools/render_rules.py --format mdc --out <repo>/.cursor/rules <rule files>`. For Copilot CLI: render `.instructions.md` via `--format copilot --out <repo>/.github/instructions`. For Claude Code (when repo-local rules were selected or detected): render via `--format claude --out <repo>/.claude/rules`; the renderer skips `requested`/`invoked` tiers, which have no Claude representation and stay with the `rules` skill. For pi: the global `rules` skill activates rules by description match; instead, append a rules hint to the repo `AGENTS.md` (see note below) |
 | `stack/*` rules matching detected dependencies | Same per-harness treatment as lang rules, after confirming with the user |
 | Tool configs | Merge `shared/seeds/<archetype>/pyproject-fragment.toml` into the repo's `pyproject.toml` (never clobber existing sections; reconcile) and add the pre-commit config. The fragment is gate config only (ruff/pyright/pytest), valid under any environment manager |
 | Doctrine, playbooks, `task/*` rules | Never deployed; they stay global |
 
 Rendered rule copies carry a `provenance:` stamp (canonical path @ catalog commit) injected by the renderer; do not strip it.
 
-**pi AGENTS.md hint** (no native glob activation; also covers Claude Code's `requested`-tier rules): add a section to `AGENTS.md` such as:
+**AGENTS.md rules hint**: every seeded repo gets a `## Coding rules` section in `AGENTS.md`; its content depends on what was deployed. Never enumerate individual rule names: the list rots as rules are added or retired, and `AGENTS.md` is repo-owned so reseed cannot rewrite it.
+
+When repo-local rule directories were deployed, point at the directories so any agent (including one without the catalog or native glob activation) finds them deterministically:
 
 ```markdown
 ## Coding rules
 
-The following rules from the enchiridion catalog apply to this repo and are
-available via the `rules` skill: python-core, python-testing, python-docs,
-python-packaging (and any stack rules detected above). Load the `rules` skill
-and read the matching rule before editing files in scope.
+Scoped coding rules are committed under `.claude/rules/` (and `.cursor/rules/`
+or `.github/instructions/` where present). Before editing files matching a
+rule's `paths`/`globs` frontmatter, read that rule.
+```
+
+When no rule directory was deployed (pi-only or AGENTS.md-only repos), the rules live only in the catalog, so point at the router skill instead; this hint works only on machines with the catalog wired:
+
+```markdown
+## Coding rules
+
+Rules from the enchiridion catalog apply to this repo via the `rules` skill.
+Consult its index and read the matching rule before editing files in scope.
 ```
 
 ### 4. Close out
