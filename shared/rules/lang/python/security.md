@@ -50,4 +50,4 @@ You are an expert in writing security-conscious Python.
 
 ## Enforcement
 
-Most of these gates are enforced by ruff's `S` (bandit) rule family where the repo is seeded with it; treat an `S`-rule suppression (`# noqa: S...`) as a finding requiring justification in review.
+Most of these gates are enforced by ruff's `S` (bandit) rule family where the repo is seeded with it; treat an `S`-rule suppression (`# noqa: S...`) as a finding requiring justification in review. The exceptions are `S603` and `S607`, which the seed gate ignores project-wide: they fire on the safe fixed-argv `subprocess.run([...])` form and on partial executable paths (e.g. `"git"`) that are intentional for portability, so their absence is the expected baseline, not a gap.

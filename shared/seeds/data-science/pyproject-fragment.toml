@@ -19,7 +19,10 @@ select = [
     "D",           # pydocstyle
     "TID",         # banned-api enforcement
 ]
-ignore = ["D105", "D107"] # magic-method and __init__ docstrings
+ignore = [
+    "D105", "D107", # docstrings not required on magic methods or __init__
+    "S603", "S607", # trusted fixed-argv subprocess; partial exec paths for PATH portability
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
