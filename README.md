@@ -1,5 +1,7 @@
 # enchiridion
 
+![enchiridion](assets/banner.jpg)
+
 An _enchiridion_ (Ancient Greek, "in the hand") is a concise handbook of precepts meant to be carried and consulted. This repo is that handbook for AI coding assistants: a single source of truth, authored once and deployed to every harness, so the rules your agents follow travel with them.
 
 Behavioral content is authored once, propagated to every harness by sync tooling, and deployed through symlinks, so committing a change is deploying it. Drift between harnesses is a verifiable state caught by pre-commit rather than a slow surprise.
