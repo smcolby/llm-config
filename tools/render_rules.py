@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""render_rules.py — render canonical rules into harness-native scoped-rule formats.
+r"""render_rules.py — render canonical rules into harness-native scoped-rule formats.
 
 Formats:
   mdc      Cursor project rules (.cursor/rules/<name>.mdc)
@@ -81,6 +81,7 @@ def render(rule_path: Path, fmt: str) -> tuple[str, str]:
 
 
 def main():
+    """Render the selected rules to the chosen format and output target."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("rules", nargs="*", help="rule files (default: all canonical rules)")
     parser.add_argument("--format", required=True, choices=FORMATS)

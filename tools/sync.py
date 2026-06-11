@@ -45,6 +45,7 @@ FM_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 
 
 def load_block(name: str) -> str:
+    """Return the canonical text of a shared block, with one trailing newline."""
     path = BLOCKS_DIR / f"{name}.md"
     if not path.exists():
         print(f"  ERROR: shared/blocks/{name}.md not found", file=sys.stderr)
@@ -53,6 +54,7 @@ def load_block(name: str) -> str:
 
 
 def check_blocks(apply: bool, harness_filter: str | None = None) -> int:
+    """Check, or with apply rewrite, fenced block regions. Return the drift count."""
     drift = 0
     for harness, fpath in HARNESS_INSTRUCTION_FILES.items():
         if harness_filter and harness != harness_filter:
@@ -100,6 +102,7 @@ def load_frontmatter(raw: str) -> tuple[dict | None, str | None]:
 
 
 def parse_shared_agent(path: Path):
+    """Parse a shared agent file into (frontmatter, body); exit on malformed input."""
     text = path.read_text()
     m = FM_RE.match(text)
     if not m:
@@ -114,6 +117,7 @@ def parse_shared_agent(path: Path):
 
 
 def check_agents(apply: bool, harness_filter: str | None = None) -> int:
+    """Render, or check, per-harness agent files from shared bodies. Return the drift count."""
     agent_configs = registry.agent_configs()
 
     drift = 0
@@ -248,6 +252,7 @@ are gates, so fix the code rather than fighting them.
 
 
 def check_rules(apply: bool) -> int:
+    """Validate rules and check, or with apply regenerate, the router index. Return 1 on drift."""
     rules = load_rules()
     expected = build_router(rules)
     if ROUTER_SKILL.exists() and ROUTER_SKILL.read_text() == expected:
@@ -290,6 +295,7 @@ def check_skills() -> int:
 
 
 def main():
+    """Run the requested sync checks, applying changes when --apply is set."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true", help="apply changes in place")
     parser.add_argument("--agents", action="store_true", help="check/render agent files")

@@ -59,10 +59,12 @@ _TS_HANDLER = (
 
 
 def expand(p: str) -> Path:
+    """Expand a ~-prefixed path to an absolute Path."""
     return Path(p.replace("~", str(HOME)))
 
 
 def link(src: Path, dst: Path) -> None:
+    """Create or repair a symlink dst -> src, idempotently."""
     dst.parent.mkdir(parents=True, exist_ok=True)
     if dst.is_symlink() and dst.readlink() == src:
         print(f"  ok   {dst}")
@@ -158,6 +160,7 @@ def _mcp_content(harness: str) -> str:
 
 
 def generate_hooks(check: bool) -> int:
+    """Generate, or check, copilot hook JSON and pi extension stubs. Return the drift count."""
     drift = 0
     for ext_file in sorted(EXTENSIONS_DIR.glob("*.toml")):
         with ext_file.open("rb") as f:
@@ -189,6 +192,7 @@ def generate_hooks(check: bool) -> int:
 
 
 def generate_mcp(check: bool) -> int:
+    """Generate, or check, aggregated per-harness MCP configs. Return the drift count."""
     drift = 0
     for harness, path in MCP_PATHS.items():
         content = _mcp_content(harness)
@@ -250,6 +254,7 @@ def remove_harness_links(harness: str) -> None:
 
 
 def main() -> None:
+    """Generate extension files, or check or remove them per the CLI flags."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="report drift without writing")
     parser.add_argument(

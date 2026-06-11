@@ -44,6 +44,7 @@ def check_doctrine_budget() -> int:
 
 
 def main():
+    """Run sync and extension checks plus the doctrine budget; exit non-zero on drift."""
     import argparse
 
     parser = argparse.ArgumentParser(description=__doc__)

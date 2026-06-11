@@ -87,25 +87,30 @@ def check_symlink(src: Path, dst: Path) -> tuple[bool, str]:
 
 
 def s_ok(label: str, detail: str = "") -> str:
+    """Format a green success line."""
     suffix = f"  [dim]{detail}[/dim]" if detail else ""
     return f"[green]✓[/green]  {label}{suffix}"
 
 
 def s_warn(label: str, detail: str = "") -> str:
+    """Format a yellow warning line."""
     suffix = f"  [dim]{detail}[/dim]" if detail else ""
     return f"[yellow]![/yellow]  {label}{suffix}"
 
 
 def s_err(label: str) -> str:
+    """Format a red failure line."""
     return f"[red]✗[/red]  {label}"
 
 
 def section(title: str):
+    """Print a section rule header."""
     console.print()
     console.rule(f"[bold]{title}[/bold]", style="bright_blue")
 
 
 def harness_row(harness: str, content: str):
+    """Print an indented per-harness status row."""
     console.print(f"    [dim]{harness:<14}[/dim]  {content}")
 
 
@@ -113,6 +118,7 @@ def harness_row(harness: str, content: str):
 
 
 def load_extensions() -> list[dict]:
+    """Load every extension manifest as a list of dicts."""
     if not EXTENSIONS_DIR.exists():
         return []
     result = []
@@ -280,7 +286,7 @@ def inspect_blocks(errors: list, warnings: list):
 
 
 def inspect_agents(errors: list, warnings: list):
-    """Rendered agent file presence per harness."""
+    """Report rendered agent file presence per harness."""
     section("SHARED AGENTS  (rendered file presence per harness)")
 
     agent_configs = registry.agent_configs()
@@ -354,6 +360,7 @@ def inspect_rules(errors: list, warnings: list):
 
 
 def inspect_skills(errors: list, warnings: list):
+    """Report each shared skill's wiring per harness."""
     section("SKILLS")
     skills: dict[str, dict[str, Path]] = {}
 
@@ -402,6 +409,7 @@ def inspect_skills(errors: list, warnings: list):
 
 
 def inspect_models(errors: list, warnings: list):
+    """Report each shared model config and which harnesses consume it."""
     section("SHARED MODELS")
 
     if not MODELS_DIR.exists():
@@ -462,6 +470,7 @@ def inspect_models(errors: list, warnings: list):
 
 
 def inspect_harness_wiring(errors: list, warnings: list):
+    """Report bootstrap-managed symlinks and generated files."""
     section("HARNESS WIRING  (symlinks + generated files)")
 
     all_harnesses = sorted(set(list(SYMLINK_MAP) + list(GENERATED_MAP)))
@@ -534,6 +543,7 @@ def _colored_diff(expected: str, actual: str, src: Path, dst: Path) -> list[str]
 
 
 def inspect_generated_drift(warnings: list):
+    """Report drift between live generated files and their rendered templates."""
     section("GENERATED FILE DRIFT  (live vs rendered template)")
 
     any_drift = False
@@ -576,6 +586,7 @@ def inspect_generated_drift(warnings: list):
 
 
 def inspect_manifest_drift(errors: list, warnings: list):
+    """Report drift between extension manifests and the files they render to."""
     section("MANIFEST-DERIVED FILES  (manifest → repo)")
 
     entries = wire_extensions.collect_hooks_drift() + wire_extensions.collect_mcp_drift()
@@ -612,6 +623,7 @@ def inspect_manifest_drift(errors: list, warnings: list):
 
 
 def main():
+    """Run every inspection and print the summary; exit non-zero on hard failures."""
     errors: list[str] = []
     warnings: list[str] = []
 

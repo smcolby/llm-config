@@ -32,6 +32,7 @@ WIRE_EXTENSIONS = REPO / "tools/wire_extensions.py"
 
 
 def link(src: Path, dst: Path) -> None:
+    """Create or repair a symlink dst -> src, idempotently."""
     dst.parent.mkdir(parents=True, exist_ok=True)
     if dst.is_symlink() and dst.readlink() == src:
         print(f"  ok   {dst}")
@@ -46,6 +47,7 @@ def link(src: Path, dst: Path) -> None:
 
 
 def generate(src: Path, dst: Path) -> None:
+    """Render a template to dst, writing only if the content changed."""
     content = render_template(src)
     dst.parent.mkdir(parents=True, exist_ok=True)
     if dst.is_symlink():
@@ -58,12 +60,14 @@ def generate(src: Path, dst: Path) -> None:
 
 
 def unlink_if_symlink(dst: Path) -> None:
+    """Remove dst if it is a symlink, leaving real files untouched."""
     if dst.is_symlink():
         dst.unlink()
         print(f"  unlink {dst}")
 
 
 def harness_installed(conf: dict) -> bool:
+    """Return True if the harness's root directory exists on this machine."""
     return expand(conf["root"]).is_dir()
 
 
@@ -71,6 +75,7 @@ def harness_installed(conf: dict) -> bool:
 
 
 def wire_harness(name: str, conf: dict) -> None:
+    """Wire one harness's symlinks and generated files into place."""
     if not harness_installed(conf):
         print(f"  SKIP {name} — {expand(conf['root'])} not found")
         return
@@ -98,6 +103,7 @@ def skill_source(skill: str) -> Path | None:
 
 
 def wire_skill(skill: str) -> None:
+    """Symlink a shared skill into every installed harness's skill directory."""
     src = skill_source(skill)
     if src is None:
         print(f"  WARN skill '{skill}' not found in shared/skills/ or llm-wiki — skipping")
@@ -155,6 +161,7 @@ def wire_only(target: str) -> None:
 
 
 def remove_harness(name: str) -> None:
+    """Unlink a harness's wiring and archive its repo directory."""
     conf = registry.harnesses().get(name)
     if conf is None:
         sys.exit(f"Unknown harness: {name}")
@@ -186,6 +193,7 @@ def remove_harness(name: str) -> None:
 
 
 def main() -> None:
+    """Wire all harnesses, skills, and extensions, or remove one harness."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--only", metavar="PATH", help="re-wire a single live file")
     parser.add_argument("--skill", metavar="NAME", help="wire one skill into all harnesses")

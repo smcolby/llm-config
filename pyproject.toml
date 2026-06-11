@@ -3,7 +3,15 @@ target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "PTH", "PT"]
+select = ["E", "F", "I", "UP", "B", "PTH", "PT", "S", "D"]
+# S603/S607: these tools orchestrate git, python, and npx by fixed argv
+# (no shell, no untrusted input); the partial paths are intentional for
+# PATH portability. All other bandit checks stay active.
+# D105/D107: docstrings not required on magic methods or __init__.
+ignore = ["S603", "S607", "D105", "D107"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
 
 [tool.pyright]
 pythonVersion = "3.12"
