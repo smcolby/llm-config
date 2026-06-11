@@ -124,7 +124,14 @@ def wire_external() -> None:
     if cm:
         plugin = Path(cm).resolve().parent / ".claude-plugin"
         if plugin.is_dir():
-            link(plugin, claude_dir / "context-mode")
+            # ~/.claude/context-mode is the tool's data directory (content/*.db
+            # knowledge bases, sessions/); only the inner .claude-plugin manifest
+            # links to the npm package, so package upgrades never touch user data
+            data_dir = claude_dir / "context-mode"
+            if data_dir.is_symlink():
+                data_dir.unlink()
+            data_dir.mkdir(exist_ok=True)
+            link(plugin, data_dir / ".claude-plugin")
     else:
         print("  SKIP context-mode — not installed (npm install -g context-mode)")
 
@@ -164,7 +171,8 @@ def remove_harness(name: str) -> None:
             unlink_if_symlink(expand(conf["skill_dir"]) / skill)
     if name == "claude-code":
         unlink_if_symlink(HOME / ".claude/skills/llm-wiki")
-        unlink_if_symlink(HOME / ".claude/context-mode")
+        unlink_if_symlink(HOME / ".claude/context-mode/.claude-plugin")
+        unlink_if_symlink(HOME / ".claude/context-mode")  # legacy whole-dir wiring
     subprocess.run([sys.executable, str(WIRE_EXTENSIONS), "--remove", name], check=True)
 
     archive_dir = REPO / "harnesses/_deprecated"
