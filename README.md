@@ -241,6 +241,7 @@ General-purpose skills live in `shared/skills/<name>/SKILL.md`, are declared in 
 | `adversarial-review` | task playbook | Staged review passes, severity rubric, findings-only output |
 | `test-author` | task playbook | Contract-derived test authoring, regression-fails-first |
 | `doc-author` | task playbook | Docstring/examples/prose-sync passes |
+| `two-pass-development` | task playbook | Plan/approve/implement/test/critique/refine workflow (Coordinator's procedure) |
 | `catalog-ingest` | operation | Adopt external content: classify, normalize, harden, dedupe, pin |
 | `catalog-audit` | operation | Staleness review, model-upgrade re-check, promote/demote |
 | `repo-seed` | operation | Seed/reseed repositories from `shared/seeds/` + rendered rules |

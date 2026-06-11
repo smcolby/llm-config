@@ -24,6 +24,7 @@ skills = [
     "test-author",
     "doc-author",
     "catalog-ingest",
+    "two-pass-development",
     "catalog-audit",
     "repo-seed",
 ]
