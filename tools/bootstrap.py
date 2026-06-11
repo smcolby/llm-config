@@ -85,7 +85,8 @@ def skill_source(skill: str) -> Path | None:
     """Resolve a skill name to its canonical directory.
 
     shared/skills/ is the source of truth; an external domain repo is the
-    fallback for skills that have not graduated (see pattern.md).
+    fallback for skills that have not graduated (see
+    patterns/cross-harness-config-pattern.md).
     """
     shared = REPO / "shared/skills" / skill
     if shared.is_dir():

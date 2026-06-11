@@ -4,12 +4,12 @@ This document describes a harness-agnostic pattern for the *content* of agentic 
 
 It is written in the spirit of Karpathy's [LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f): principles first, named operations, deliberately abstract about implementation. Share it with an LLM and instantiate a version that fits your setup.
 
-It is the companion to [pattern.md](pattern.md). The two divide cleanly:
+It is the companion to [cross-harness-config-pattern.md](cross-harness-config-pattern.md). The two divide cleanly:
 
-- **pattern.md** is the *distribution* system: how canonical content reaches each harness (blocks, fences, symlinks, registries, verification).
-- **agentic-pattern.md** (this document) is the *content architecture*: what that content is, how it is layered, scoped, activated, and kept healthy.
+- **cross-harness-config-pattern.md** is the *distribution* system: how canonical content reaches each harness (blocks, fences, symlinks, registries, verification).
+- **agentic-infrastructure-pattern.md** (this document) is the *content architecture*: what that content is, how it is layered, scoped, activated, and kept healthy.
 
-pattern.md answers "how does an instruction get to Claude Code and Copilot identically?" This document answers "which instructions should exist, at what scope, and when should the model see them?"
+cross-harness-config-pattern.md answers "how does an instruction get to Claude Code and Copilot identically?" This document answers "which instructions should exist, at what scope, and when should the model see them?"
 
 ---
 
@@ -66,7 +66,7 @@ The discipline: **content earns its tier.** Promotion toward always-on requires 
 
 ## The five content layers
 
-The architecture has five layers of LLM-facing content, ordered from broadest scope and eagerest loading to narrowest scope and laziest loading. (Extensions, third-party tools needing per-harness wiring, are a mechanism rather than content, and remain covered by pattern.md.)
+The architecture has five layers of LLM-facing content, ordered from broadest scope and eagerest loading to narrowest scope and laziest loading. (Extensions, third-party tools needing per-harness wiring, are a mechanism rather than content, and remain covered by cross-harness-config-pattern.md.)
 
 | Layer | What it is | Scope | Loaded | Exists in llm-config today |
 |---|---|---|---|---|
@@ -125,7 +125,7 @@ Rules are the new layer, so they get the full treatment.
 
 ### Canonical schema
 
-One rule per file, canonical body harness-agnostic, metadata in frontmatter. Mirroring the agent mechanism in pattern.md: the body is byte-identical everywhere; frontmatter is rendered per harness from the canonical fields.
+One rule per file, canonical body harness-agnostic, metadata in frontmatter. Mirroring the agent mechanism in cross-harness-config-pattern.md: the body is byte-identical everywhere; frontmatter is rendered per harness from the canonical fields.
 
 ```markdown
 ---
@@ -203,7 +203,7 @@ A conflict that precedence cannot resolve cleanly is a catalog bug: `ingest` and
 
 ## Per-repository deployment
 
-The catalog is global and canonical, but the artifacts that make `scoped` rules work are repository files: Cursor reads `.cursor/rules/*.mdc` from the project, Copilot reads `.github/instructions/*.instructions.md` from the project, and the repo's `AGENTS.md` is by definition local. Global wiring (pattern.md's symlink discipline) cannot reach them. Deployment into repositories is therefore a first-class part of the pattern, with four commitments:
+The catalog is global and canonical, but the artifacts that make `scoped` rules work are repository files: Cursor reads `.cursor/rules/*.mdc` from the project, Copilot reads `.github/instructions/*.instructions.md` from the project, and the repo's `AGENTS.md` is by definition local. Global wiring (cross-harness-config-pattern.md's symlink discipline) cannot reach them. Deployment into repositories is therefore a first-class part of the pattern, with four commitments:
 
 **Copy with provenance, never symlink.** Repo rules must be committable artifacts of the repo: collaborators and CI do not have the catalog, and a symlinked rule would silently vanish for them. Each rendered copy carries a provenance stamp in its frontmatter:
 
@@ -211,7 +211,7 @@ The catalog is global and canonical, but the artifacts that make `scoped` rules 
 provenance: rules/lang/python/testing @ <catalog commit>
 ```
 
-Provenance makes drift mechanical to detect: `reseed` (see Operations) diffs each repo copy against the catalog version its stamp names, proposes updates, and records intentional divergence instead of overwriting it. This mirrors the rendered-agents discipline from pattern.md (generated files committed, drift visible) rather than its symlink discipline. The accepted tradeoff: repos lag the catalog until reseeded, which is the price of portability; `audit` flags stale provenance stamps.
+Provenance makes drift mechanical to detect: `reseed` (see Operations) diffs each repo copy against the catalog version its stamp names, proposes updates, and records intentional divergence instead of overwriting it. This mirrors the rendered-agents discipline from cross-harness-config-pattern.md (generated files committed, drift visible) rather than its symlink discipline. The accepted tradeoff: repos lag the catalog until reseeded, which is the price of portability; `audit` flags stale provenance stamps.
 
 **Detect first, ask second.** Robust coverage comes from inspection rather than interrogation. Seeding begins by detecting what it can: languages from file extensions, stack from `pyproject.toml` and lockfiles, harnesses in use from existing config directories, test framework from imports and config. Only what detection cannot resolve becomes a question, and the questions map onto the seed axes: purpose (library / CLI / service / data-science), strictness posture, and target harnesses when none are detectable. Three or four questions at most, with detected values offered as defaults.
 
@@ -228,7 +228,7 @@ Provenance makes drift mechanical to detect: `reseed` (see Operations) diffs eac
 
 Only `scoped`-tier rules need repo deployment, and only rendered for harnesses whose scoped support is project-level.
 
-**One renderer.** The interview and selection are judgment work and belong in a playbook; the canonical-rule-to-harness-format rendering is deterministic and lives in one shared implementation used by `seed`, `reseed`, and `verify` alike, per pattern.md's generator-verifier principle.
+**One renderer.** The interview and selection are judgment work and belong in a playbook; the canonical-rule-to-harness-format rendering is deterministic and lives in one shared implementation used by `seed`, `reseed`, and `verify` alike, per cross-harness-config-pattern.md's generator-verifier principle.
 
 ---
 
@@ -249,7 +249,7 @@ Adopted from the VoltAgent quality criteria and extended; these apply to rules a
 | Reviewed date present | Every rule and playbook carries `reviewed:`; audit (see Operations) flags stale ones |
 | Diff against default behavior | No directive that restates what the model does unprompted. Model-relative: re-evaluated when the model changes |
 
-These standards are the rule-layer analogue of pattern.md's "blocks are universal or they are not blocks": invariants simple enough to verify mechanically, strict enough to keep the catalog healthy.
+These standards are the rule-layer analogue of cross-harness-config-pattern.md's "blocks are universal or they are not blocks": invariants simple enough to verify mechanically, strict enough to keep the catalog healthy.
 
 ---
 
@@ -370,7 +370,7 @@ Move content between layers and tiers as evidence accumulates:
 - A task rule that has grown procedure → extract the procedure to a playbook, demote the remainder.
 - Default direction is downward; promotion requires demonstrated cross-session need.
 
-This is the content-layer analogue of pattern.md's drift reconciliation: improvements made in the heat of work get deliberately re-homed rather than accreting where they landed.
+This is the content-layer analogue of cross-harness-config-pattern.md's drift reconciliation: improvements made in the heat of work get deliberately re-homed rather than accreting where they landed.
 
 ### capture(failure)
 
@@ -380,7 +380,7 @@ Capture's first question is the hardening triage: a mistake a machine can catch 
 
 ### verify()
 
-Mechanical lint of the catalog, runnable in pre-commit alongside the congruence checks from pattern.md:
+Mechanical lint of the catalog, runnable in pre-commit alongside the congruence checks from cross-harness-config-pattern.md:
 
 - Schema: required frontmatter fields present and well-formed.
 - Budgets: frontmatter and body length within progressive-disclosure limits; doctrine total within its hard ceiling (see Non-goals).
@@ -402,11 +402,11 @@ Periodic (scheduled or prompted) review for semantic staleness, which verify() c
 
 ## Integration with the cross-harness spec
 
-This section sketches how the pattern lands in llm-config; the actual migration is follow-up work against pattern.md.
+This section sketches how the pattern lands in llm-config; the actual migration is follow-up work against cross-harness-config-pattern.md.
 
 - **New canonical directories:** `shared/rules/` (taxonomy as above) and `shared/seeds/`. Both follow the existing canonical-source discipline: bodies are harness-agnostic, frontmatter is rendered.
 - **Rules render like agents, not like blocks.** The agent mechanism (canonical body + per-harness frontmatter rendering, driven by registry sub-tables) is the right mechanism for rules: Cursor gets `.mdc` with `globs`/`alwaysApply`, Copilot gets `*.instructions.md` with `applyTo`, harnesses without native scoped rules get the degradation ladder (skill rendering with description-based activation). The registry grows a `[harnesses.<name>.rules]` sub-table declaring the target format and tier-degradation policy per harness. The delivery path then splits by scope: global-capable renderings (degraded skills, global instruction additions) wire through bootstrap as usual, while project-level formats (`.cursor/rules/`, `.github/instructions/`) deploy through `seed`/`reseed`, both paths calling the same renderer.
-- **Adding a harness with native rules (e.g. Cursor) is a registry entry**, exactly as pattern.md prescribes for any new harness: declare its rule directory, instruction file, and rendering policy; sync and bootstrap pick it up.
+- **Adding a harness with native rules (e.g. Cursor) is a registry entry**, exactly as cross-harness-config-pattern.md prescribes for any new harness: declare its rule directory, instruction file, and rendering policy; sync and bootstrap pick it up.
 - **Playbooks are ordinary skills** and ride the existing skill symlink mechanism unchanged.
 - **Seeds and repo deployment are playbook work.** Seeds are never wired into harnesses; `seed` and `reseed` ship as skills (the interview and selection require judgment), and the deterministic renderer they call is a small Python tool shared with `verify()`.
 - **verify() extends `tools/verify.py`**; every other operation ships as a playbook riding the existing skill mechanism, per the trigger matrix in Operations. The audit schedule is a harness scheduling feature or a calendar reminder; it needs no infrastructure in this repo.

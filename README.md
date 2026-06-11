@@ -4,13 +4,13 @@ Single source of truth for AI harness configurations: **pi**, **Claude Code**, a
 
 AI coding assistants each read behavioral instructions from their own config files (`AGENTS.md`, `CLAUDE.md`, `copilot-instructions.md`). When you use more than one, the same rules — code style, safety guardrails, tool routing, agent personas — need to live in each of them. Edit one and you need to remember to update the others. They drift. This repo fixes that: shared rules live in one place, harness configs are derived from them, and a verification step makes drift visible rather than silent.
 
-> **This repository is an instance of the pattern described in [pattern.md](pattern.md).** To implement the pattern for your own setup, point your LLM at `pattern.md` and have it build from scratch — or use this repo as a reference implementation. Adopting the repo directly assumes pi, Claude Code, and GitHub Copilot CLI as your harnesses.
+> **This repository is an instance of the pattern described in [patterns/cross-harness-config-pattern.md](patterns/cross-harness-config-pattern.md).** To implement the pattern for your own setup, point your LLM at that file and have it build from scratch — or use this repo as a reference implementation. Adopting the repo directly assumes pi, Claude Code, and GitHub Copilot CLI as your harnesses.
 
 ---
 
 ## Design rationale
 
-See `pattern.md` for the full design, decision record, and usage scenarios. Key decisions:
+See `patterns/cross-harness-config-pattern.md` for the full distribution design, decision record, and usage scenarios, and `patterns/agentic-infrastructure-pattern.md` for the content architecture (layers, rules, operations) it will carry. Key decisions:
 
 - **Composition over generation** — harness files are human-readable; sync only touches fenced regions
 - **One registry for harness topology** — `tools/harnesses.toml` declares every harness's instruction file, symlinks, generated files, skill directory, and agent frontmatter rules; sync, report, and bootstrap all read it
@@ -57,7 +57,9 @@ tools/
   verify.py                # Congruence tests — exits non-zero on drift
   bootstrap.py             # Idempotent wiring: symlinks, generated files, skills, extensions
   wire_extensions.py       # Extension file generation and wiring (called by bootstrap.py)
-pattern.md         # Full design rationale and decision record
+patterns/
+  cross-harness-config-pattern.md    # Distribution design: blocks, sync, registry, bootstrap
+  agentic-infrastructure-pattern.md  # Content architecture: layers, rules, operations
 ```
 
 ---
@@ -237,7 +239,7 @@ To add a skill: write `shared/skills/<name>/SKILL.md` (with `name` + `descriptio
 
 To update a skill: edit `shared/skills/<name>/SKILL.md` directly — symlinks deploy the change instantly, no sync step needed.
 
-For domain-specific skills tightly coupled to a single project, the skill can live in that project's repo and be registered in `bootstrap.py` as an external source. See `pattern.md` for the decision rule.
+For domain-specific skills tightly coupled to a single project, the skill can live in that project's repo and be registered in `bootstrap.py` as an external source. See `patterns/cross-harness-config-pattern.md` for the decision rule.
 
 ## Extensions
 
