@@ -311,6 +311,46 @@ def inspect_agents(errors: list, warnings: list):
     console.print(table)
 
 
+# ── rules ─────────────────────────────────────────────────────────────────────
+
+
+def inspect_rules(errors: list, warnings: list):
+    """Canonical rule catalog: schema, tiers, scopes, review dates, router freshness."""
+    section("RULES  (catalog + router skill index)")
+
+    import sync
+
+    if not (REPO / "shared/rules").exists():
+        console.print("\n  [dim]no rules defined[/dim]")
+        return
+
+    try:
+        rules = sync.load_rules()
+    except SystemExit:
+        console.print(f"\n  {s_err('rule schema errors — see sync.py --rules output')}")
+        errors.append("rule schema validation failed (python tools/sync.py --rules)")
+        return
+
+    table = Table(box=box.SIMPLE_HEAD, padding=(0, 2), pad_edge=False, show_edge=False)
+    table.add_column("rule", style="cyan")
+    table.add_column("tier")
+    table.add_column("scope")
+    table.add_column("stack")
+    table.add_column("reviewed")
+    for _path, fm, _body in rules:
+        scope = ", ".join(fm.get("scope", [])) or "[dim]—[/dim]"
+        stack = ", ".join(fm.get("stack", [])) or "[dim]—[/dim]"
+        table.add_row(fm["name"], fm["tier"], scope, stack, str(fm["reviewed"]))
+    console.print(table)
+
+    expected = sync.build_router(rules)
+    if sync.ROUTER_SKILL.exists() and sync.ROUTER_SKILL.read_text() == expected:
+        console.print(f"\n  {s_ok('router index fresh', short(sync.ROUTER_SKILL))}")
+    else:
+        console.print(f"\n  {s_err('router index stale — run sync.py --rules --apply')}")
+        errors.append("rules router index stale or missing (sync.py --rules --apply)")
+
+
 # ── skills ────────────────────────────────────────────────────────────────────
 
 
@@ -585,6 +625,7 @@ def main():
     inspect_tools(errors, warnings)
     inspect_blocks(errors, warnings)
     inspect_agents(errors, warnings)
+    inspect_rules(errors, warnings)
     inspect_skills(errors, warnings)
     inspect_models(errors, warnings)
     inspect_manifest_drift(errors, warnings)

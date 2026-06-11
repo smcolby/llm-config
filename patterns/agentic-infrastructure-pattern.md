@@ -402,14 +402,14 @@ Periodic (scheduled or prompted) review for semantic staleness, which verify() c
 
 ## Integration with the cross-harness spec
 
-This section sketches how the pattern lands in llm-config; the actual migration is follow-up work against cross-harness-config-pattern.md.
+This section records how the pattern landed in llm-config (instantiated 2026-06); the README documents day-to-day usage.
 
-- **New canonical directories:** `shared/rules/` (taxonomy as above) and `shared/seeds/`. Both follow the existing canonical-source discipline: bodies are harness-agnostic, frontmatter is rendered.
-- **Rules render like agents, not like blocks.** The agent mechanism (canonical body + per-harness frontmatter rendering, driven by registry sub-tables) is the right mechanism for rules: Cursor gets `.mdc` with `globs`/`alwaysApply`, Copilot gets `*.instructions.md` with `applyTo`, harnesses without native scoped rules get the degradation ladder (skill rendering with description-based activation). The registry grows a `[harnesses.<name>.rules]` sub-table declaring the target format and tier-degradation policy per harness. The delivery path then splits by scope: global-capable renderings (degraded skills, global instruction additions) wire through bootstrap as usual, while project-level formats (`.cursor/rules/`, `.github/instructions/`) deploy through `seed`/`reseed`, both paths calling the same renderer.
-- **Adding a harness with native rules (e.g. Cursor) is a registry entry**, exactly as cross-harness-config-pattern.md prescribes for any new harness: declare its rule directory, instruction file, and rendering policy; sync and bootstrap pick it up.
-- **Playbooks are ordinary skills** and ride the existing skill symlink mechanism unchanged.
-- **Seeds and repo deployment are playbook work.** Seeds are never wired into harnesses; `seed` and `reseed` ship as skills (the interview and selection require judgment), and the deterministic renderer they call is a small Python tool shared with `verify()`.
-- **verify() extends `tools/verify.py`**; every other operation ships as a playbook riding the existing skill mechanism, per the trigger matrix in Operations. The audit schedule is a harness scheduling feature or a calendar reminder; it needs no infrastructure in this repo.
+- **Canonical directories:** `shared/rules/` (taxonomy as above; `lang/python/` authored first) and `shared/seeds/` (four Python archetypes). Bodies are harness-agnostic; packaging is rendered.
+- **Global activation uses the degradation ladder's router form.** None of the wired harnesses (pi, Claude Code, Copilot CLI) support native glob-scoped rules, so `scoped` degrades to one `requested`-tier router skill: `sync.py --rules` validates rule schemas and generates `shared/skills/rules/SKILL.md` as an index mapping file patterns to rules, with rule bodies readable through a relative symlink. One skill wiring, progressive disclosure, no per-rule skill churn.
+- **Project-level formats render through `tools/render_rules.py`** (Cursor `.mdc` with `globs`/`alwaysApply`, Copilot `*.instructions.md` with `applyTo`), each copy provenance-stamped. The `repo-seed` skill drives it. Adding a harness with native scoped rules (e.g. Cursor) remains a registry entry plus a render target; the renderer already speaks the format.
+- **Playbooks are ordinary skills** riding the existing symlink mechanism: `adversarial-review`, `test-author`, `doc-author`, plus the operations (`catalog-ingest`, `catalog-audit`, `repo-seed`, with capture embedded in review and doctrine per the trigger matrix).
+- **Seeds are never wired into harnesses**; the `repo-seed` skill consumes them at repo-creation time.
+- **verify() extended `tools/verify.py`** with the doctrine token ceiling (`doctrine_token_ceiling` in the registry) alongside the existing congruence checks; `report.py` gained a RULES section. The audit schedule is a harness scheduling feature or a calendar reminder; it needs no infrastructure in this repo.
 
 ---
 
