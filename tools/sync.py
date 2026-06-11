@@ -79,15 +79,36 @@ def check_blocks(apply: bool, harness_filter: str | None = None) -> int:
     return drift
 
 
+def load_frontmatter(raw: str) -> tuple[dict | None, str | None]:
+    """Parse a frontmatter YAML block. Returns (data, None) or (None, message).
+
+    The common authoring mistake is an unquoted value containing a colon
+    followed by a space, which YAML reads as a nested mapping; the message
+    names that cause so the fix is obvious without decoding a raw scanner error.
+    """
+    import yaml
+
+    try:
+        return yaml.safe_load(raw), None
+    except yaml.YAMLError as e:
+        detail = str(e).replace("\n", " ")
+        hint = (
+            " (a value containing a colon followed by a space must be quoted,"
+            ' e.g. description: "foo: bar")'
+        )
+        return None, f"invalid YAML frontmatter: {detail}{hint}"
+
+
 def parse_shared_agent(path: Path):
     text = path.read_text()
     m = FM_RE.match(text)
     if not m:
         print(f"  ERROR: no frontmatter in {path}", file=sys.stderr)
         sys.exit(1)
-    import yaml
-
-    fm = yaml.safe_load(m.group(1))
+    fm, err = load_frontmatter(m.group(1))
+    if err or not isinstance(fm, dict):
+        print(f"  ERROR: {path}: {err or 'frontmatter is not a mapping'}", file=sys.stderr)
+        sys.exit(1)
     body = text[m.end() :].lstrip("\n")
     return fm, body
 
@@ -141,8 +162,6 @@ def check_agents(apply: bool, harness_filter: str | None = None) -> int:
 
 def load_rules() -> list[tuple[Path, dict, str]]:
     """Parse and schema-validate all canonical rules. Exits non-zero on errors."""
-    import yaml
-
     rules: list[tuple[Path, dict, str]] = []
     errors: list[str] = []
     seen: dict[str, Path] = {}
@@ -153,7 +172,10 @@ def load_rules() -> list[tuple[Path, dict, str]]:
         if not m:
             errors.append(f"{rel}: missing frontmatter")
             continue
-        fm = yaml.safe_load(m.group(1))
+        fm, err = load_frontmatter(m.group(1))
+        if err or not isinstance(fm, dict):
+            errors.append(f"{rel}: {err or 'frontmatter is not a mapping'}")
+            continue
         body = text[m.end() :].lstrip("\n")
         for field in ("name", "description", "tier", "reviewed"):
             if not fm.get(field):
@@ -241,8 +263,6 @@ def check_rules(apply: bool) -> int:
 
 def check_skills() -> int:
     """Schema-validate shared skill frontmatter. Exits non-zero on errors."""
-    import yaml
-
     errors: list[str] = []
     for skill_md in sorted(SKILLS_DIR.glob("*/SKILL.md")):
         rel = skill_md.relative_to(REPO)
@@ -250,7 +270,10 @@ def check_skills() -> int:
         if not m:
             errors.append(f"{rel}: missing frontmatter")
             continue
-        fm = yaml.safe_load(m.group(1))
+        fm, err = load_frontmatter(m.group(1))
+        if err or not isinstance(fm, dict):
+            errors.append(f"{rel}: {err or 'frontmatter is not a mapping'}")
+            continue
         for field in ("name", "description"):
             if not fm.get(field):
                 errors.append(f"{rel}: missing required field '{field}'")
