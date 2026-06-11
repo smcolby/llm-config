@@ -25,6 +25,7 @@ Inspect before asking anything:
 - **Test framework**: test dirs, pytest config, imports.
 - **Environment manager**: `uv.lock` → uv; `pixi.toml` → pixi; `environment.yml` → conda; none → uv (the default for new projects).
 - **Harnesses in use**: `.cursor/`, `.github/copilot-*` or `.github/instructions/`, `.claude/`, existing `AGENTS.md`.
+- **Existing instruction files**: `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`. If harness-branded files exist without `AGENTS.md`, offer two paths and never create a second freestanding instruction file: **consolidate** (move content into a new `AGENTS.md`, shrink the branded files to one-line pointers) or **conform** (treat the existing file as the repo's canonical and apply the seed template's sections to it instead). Conform is the default for repos the user does not own.
 
 ### 2. Ask only what detection could not resolve
 

@@ -11,6 +11,10 @@ the file written for the active harness; otherwise treat them as additive.
 Repository-level instructions override global instructions where they conflict.
 Global rules continue to apply unless the repo file explicitly relaxes them.
 
+When editing repository instructions, edit the canonical file (`AGENTS.md` when
+present, else the repo's existing instruction file) and keep harness-branded
+duplicates as pointers to it; never fork content across them.
+
 Instruction files also appear in subdirectories. When working under a directory
 that has one, read it; deeper files take precedence over shallower ones for
 their subtree.
