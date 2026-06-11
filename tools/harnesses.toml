@@ -61,6 +61,7 @@ symlinks = [
     ["harnesses/claude-code/CLAUDE.md", "~/.claude/CLAUDE.md"],
     ["harnesses/claude-code/statusline.sh", "~/.claude/statusline.sh"],
     ["harnesses/claude-code/agents", "~/.claude/agents"],
+    ["harnesses/claude-code/rules", "~/.claude/rules"],
 ]
 generated = [
     ["harnesses/claude-code/settings.json", "~/.claude/settings.json"],

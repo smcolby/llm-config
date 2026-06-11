@@ -111,9 +111,12 @@ Harness support for these tiers is uneven, which is precisely why the tier must 
 
 | Harness capability | `always` | `scoped` | `requested` | `invoked` |
 |---|---|---|---|---|
-| Native scoped rules (Cursor `.cursor/rules/*.mdc`, Copilot `*.instructions.md` with `applyTo`) | native | native | native | native |
-| Directory-scoped instruction files (Claude Code nested `CLAUDE.md`/`AGENTS.md`) | native | emulated via placement | via skill description | via skill |
-| Skills only (any harness with a skill directory) | inline in instructions | degraded to `requested` | native | native |
+| Native scoped rules, project-level only (Cursor `.cursor/rules/*.mdc`, Copilot `*.instructions.md` with `applyTo`) | native | native | native | native |
+| Native scoped rules, user and project level (Claude Code `rules/` dirs with `paths` frontmatter) | native (rule without `paths`) | native | via skill description | via skill |
+| Directory-scoped instruction files (nested `CLAUDE.md`/`AGENTS.md`) | native | emulated via placement | via skill description | via skill |
+| Skills only (pi, or any harness with a skill directory) | inline in instructions | degraded to `requested` | native | native |
+
+Two Claude Code caveats shape the rendering. First, its rules have no description-based activation: a rule without `paths` is unconditionally in context, so `requested`-tier rules must not be rendered into its rule directories (they would degrade *upward*); they stay on the skill row. Second, `paths` rules trigger when the model *reads* a matching file, which covers edits (editing requires a prior read) but not greenfield writes of new files; the router skill remains wired as the description-match fallback for exactly that gap.
 
 **Tier degradation ladder:** when a harness cannot honor a tier natively, degrade *downward* (lazier), never upward. A `scoped` Python testing rule on a harness without glob rules becomes a `requested` skill with a strong description ("Apply when writing or modifying pytest tests..."), never an `always` block. Degrading upward is how monolithic config files re-emerge.
 
@@ -203,7 +206,7 @@ A conflict that precedence cannot resolve cleanly is a catalog bug: `ingest` and
 
 ## Per-repository deployment
 
-The catalog is global and canonical, but the artifacts that make `scoped` rules work are repository files: Cursor reads `.cursor/rules/*.mdc` from the project, Copilot reads `.github/instructions/*.instructions.md` from the project, and the repo's `AGENTS.md` is by definition local. Global wiring (cross-harness-config-pattern.md's symlink discipline) cannot reach them. Deployment into repositories is therefore a first-class part of the pattern, with four commitments:
+The catalog is global and canonical, but on most harnesses the artifacts that make `scoped` rules work are repository files: Cursor reads `.cursor/rules/*.mdc` from the project, Copilot reads `.github/instructions/*.instructions.md` from the project, and the repo's `AGENTS.md` is by definition local. Global wiring (cross-harness-config-pattern.md's symlink discipline) cannot reach those. The exception is a harness with a *user-level* scoped-rule directory (Claude Code's `~/.claude/rules/`): there the catalog wires rendered rules globally through a symlink, no per-repo deployment needed, and repo-local copies matter only for collaborators and CI without the catalog. Deployment into repositories remains a first-class part of the pattern for everything else, with four commitments:
 
 **Copy with provenance, never symlink.** Repo rules must be committable artifacts of the repo: collaborators and CI do not have the catalog, and a symlinked rule would silently vanish for them. Each rendered copy carries a provenance stamp in its frontmatter:
 
@@ -220,7 +223,7 @@ Provenance makes drift mechanical to detect: `reseed` (see Operations) diffs eac
 | Content | Deploys to repos? | Reason |
 |---|---|---|
 | Doctrine | Never | Global, always-on; travels with the harness, not the repo |
-| `lang/*` rules | Yes, per detected language | `scoped` activation requires project-level rule files on most harnesses |
+| `lang/*` rules | Yes, per detected language | `scoped` activation requires project-level rule files on harnesses without a user-level rule directory; skipped where global wiring already covers it |
 | `stack/*` rules | Yes, detected then confirmed | Opt-in by the repo's actual dependencies |
 | `task/*` rules, playbooks | Never | `requested`/`invoked` tiers activate by description; global skill wiring suffices |
 | Seed `AGENTS.md` | Yes, once | The repo's own context file: template-instantiated, then repo-owned |
@@ -406,7 +409,8 @@ How this pattern composes with cross-harness-config-pattern.md when both are imp
 
 - **Rules and seeds get canonical directories** beside the distribution pattern's blocks, agents, and skills, following the same canonical-source discipline: bodies are harness-agnostic, packaging is rendered.
 - **Global activation on harnesses without native glob-scoped rules uses the degradation ladder's router form**: the sync tool validates rule schemas and generates the router skill's index from rule frontmatter, with rule bodies reachable through the skill directory. One skill wiring, progressive disclosure, no per-rule churn in the skill registry as the catalog grows.
-- **Project-level formats render through one renderer** (Cursor `.mdc` with `globs`/`alwaysApply`, Copilot `*.instructions.md` with `applyTo`), every copy provenance-stamped; the seed playbook drives it. Adding a harness with native scoped rules is a registry entry plus a render target.
+- **Global activation on harnesses with a user-level rule directory rides the distribution layer directly**: the sync tool renders scoped rules into a committed per-harness directory, the registry symlinks it to the live location, and the verifier checks the render like any other generated file.
+- **Harness-native formats render through one renderer** (Cursor `.mdc` with `globs`/`alwaysApply`, Copilot `*.instructions.md` with `applyTo`, Claude Code `.md` with `paths`); repo-deployed copies are provenance-stamped, catalog-committed renders are not (git tracks them). The seed playbook drives repo deployment. Adding a harness with native scoped rules is a registry entry plus a render target.
 - **Playbooks are ordinary skills** riding the distribution pattern's skill mechanism unchanged; operations ship as playbooks per the trigger matrix, with capture embedded in review playbooks and one doctrine sentence.
 - **Seeds are never wired into harnesses**; the seed playbook consumes them at repo-creation time, so they need only live in the repo.
 - **verify() extends the distribution pattern's congruence tool** with rule schema validation and the doctrine token ceiling (the ceiling declared in the registry, so generator and verifier read one number); the inspection tool gains a rules view. The audit schedule is a harness scheduling feature or a calendar reminder; it needs no repo infrastructure.

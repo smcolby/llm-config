@@ -16,7 +16,7 @@ A shared block is byte-for-byte identical in every harness that includes it. `ve
 Every change ends with `python tools/verify.py` clean, then a commit. Symlinks make the commit live; do not hand-edit live files under `~/.claude`, `~/.pi`, or `~/.github`.
 
 - **Universal behavior** (doctrine): edit `shared/blocks/<topic>.md`, then `python tools/sync.py --apply`. Doctrine has a hard token ceiling; net additions need a demotion candidate.
-- **A coding rule**: edit `shared/rules/<axis>/<name>.md` (frontmatter: name, description, tier, scope, stack, reviewed), then `python tools/sync.py --rules --apply` to revalidate and regenerate the router index. Prefer the `catalog-ingest` skill for external content.
+- **A coding rule**: edit `shared/rules/<axis>/<name>.md` (frontmatter: name, description, tier, scope, stack, reviewed), then `python tools/sync.py --rules --apply` to revalidate and regenerate the router index plus the Claude Code path-scoped renders in `harnesses/claude-code/rules/`. Prefer the `catalog-ingest` skill for external content.
 - **A persona**: edit `shared/agents/<name>.md` (stance only; procedure belongs in a playbook, constraints in a rule), then `python tools/sync.py --agents --apply`.
 - **A playbook or skill body**: edit `shared/skills/<name>/SKILL.md`; live instantly via symlink. New skills must be added to `tools/harnesses.toml` and wired with `python tools/bootstrap.py --skill <name>`.
 - **New wiring** (a new symlink target, generated file, or harness): `python tools/bootstrap.py`. Pure content edits do not need it.
@@ -25,5 +25,5 @@ Every change ends with `python tools/verify.py` clean, then a commit. Symlinks m
 
 - Follow the global doctrine and the deployed coding rules; consult the `rules` skill index before editing `tools/*.py`.
 - One generator-verifier rule: placeholder substitution and registry topology live once in `tools/registry.py`; never duplicate them into a sibling tool.
-- Generated files (rendered agents, router index, manifest-derived hooks/MCP configs) are committed so `git diff` shows what changed; regenerate them with the relevant tool rather than editing by hand.
+- Generated files (rendered agents, router index, rendered Claude rules, manifest-derived hooks/MCP configs) are committed so `git diff` shows what changed; regenerate them with the relevant tool rather than editing by hand.
 - Do not bypass the gate. The commit-msg hook rejects conventional-commit prefixes and authorship footers; follow the git conventions in doctrine.

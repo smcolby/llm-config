@@ -43,6 +43,7 @@ The ordering is a budget: each layer exists to keep content out of the always-on
 shared/        canonical content
   blocks/      doctrine, fenced into each harness instruction file
   rules/       coding rules (lang/, stack/, task/), indexed into the `rules` router skill
+               and rendered to Claude Code path-scoped rules (live via ~/.claude/rules)
   agents/      persona bodies; frontmatter rendered per harness
   skills/      playbooks + the generated rules router; symlinked into every harness
   seeds/       repo archetypes: AGENTS.md template, gate configs, rule selection
@@ -67,8 +68,9 @@ python tools/sync.py --apply
 ```bash
 $EDITOR shared/rules/lang/python/<name>.md   # or stack/, task/
 python tools/sync.py --rules --apply         # validates schema, regenerates router index
+                                             # + the Claude Code path-scoped renders
 ```
-Prefer the `catalog-ingest` skill when adopting external content; it dedupes and hardens on the way in.
+Prefer the `catalog-ingest` skill when adopting external content; it dedupes and hardens on the way in. Scoped rules reach Claude Code natively (rendered with `paths` frontmatter, symlinked to `~/.claude/rules/`); on pi they activate through the `rules` router skill by description match.
 
 **Add or update a playbook:**
 ```bash

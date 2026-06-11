@@ -4,12 +4,21 @@ r"""render_rules.py — render canonical rules into harness-native scoped-rule f
 Formats:
   mdc      Cursor project rules (.cursor/rules/<name>.mdc)
   copilot  Copilot path-scoped instructions (.github/instructions/<name>.instructions.md)
+  claude   Claude Code path-scoped rules (.claude/rules/<name>.md, also valid
+           at the user level under ~/.claude/rules/)
 
 These formats are only meaningful for harnesses that support native glob-scoped
-rule activation: Cursor (mdc) and Copilot CLI (copilot). Claude Code and pi do
-not auto-load repo-local rule files; for those harnesses the global `rules`
-skill handles activation by description match, and repo-seed appends a rules
-hint to AGENTS.md instead.
+rule activation: Cursor (mdc), Copilot CLI (copilot), and Claude Code (claude).
+Claude Code activates `paths`-scoped rules at both the user level (the catalog
+wires harnesses/claude-code/rules/ to ~/.claude/rules/ via sync.py and the
+registry) and the repo level (deployed by repo-seed). pi has no scoped-rule
+mechanism; there the global `rules` skill handles activation by description
+match, and repo-seed appends a rules hint to AGENTS.md instead.
+
+Claude Code has no description-based activation for rules: a rule without
+`paths` is always-on. Rendering to the claude format therefore skips
+`requested` and `invoked` tier rules (they activate through the `rules`
+skill); `scoped` renders with `paths` and `always` renders unconditional.
 
 Rendered copies carry a provenance stamp (canonical path @ catalog commit) so
 the repo-seed skill can detect drift between a seeded repository and the
@@ -31,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import registry  # noqa: E402
 import sync  # noqa: E402
 
-FORMATS = ("mdc", "copilot")
+FORMATS = ("mdc", "copilot", "claude")
 
 
 def provenance(rule_path: Path) -> str:
@@ -46,8 +55,14 @@ def provenance(rule_path: Path) -> str:
     return f"{rel} @ {head}"
 
 
-def render(rule_path: Path, fmt: str) -> tuple[str, str]:
-    """Render one canonical rule. Returns (filename, content)."""
+def render(rule_path: Path, fmt: str, include_provenance: bool = True) -> tuple[str, str] | None:
+    """Render one canonical rule to (filename, content).
+
+    Returns None when the rule's tier has no representation in the target
+    format. Provenance is included for repo-deployed copies (reseed diffs against the
+    stamped commit) and omitted for catalog-committed renders, where the stamp
+    would churn on every commit and git already tracks drift.
+    """
     import yaml
 
     if fmt not in FORMATS:
@@ -69,16 +84,26 @@ def render(rule_path: Path, fmt: str) -> tuple[str, str]:
             "description": description,
             "globs": globs,
             "alwaysApply": fm.get("tier") == "always",
-            "provenance": provenance(rule_path),
         }
         filename = f"{name}.mdc"
-    else:
+    elif fmt == "copilot":
         frontmatter = {
             "description": description,
             "applyTo": globs or "**",
-            "provenance": provenance(rule_path),
         }
         filename = f"{name}.instructions.md"
+    else:
+        # claude rules have no description activation: an unscoped rule is
+        # always-on, so requested/invoked tiers stay with the rules skill
+        if fm.get("tier") not in ("scoped", "always"):
+            return None
+        frontmatter = {"description": description}
+        if fm.get("tier") == "scoped":
+            frontmatter["paths"] = fm["scope"]
+        filename = f"{name}.md"
+
+    if include_provenance:
+        frontmatter["provenance"] = provenance(rule_path)
 
     fm_yaml = yaml.safe_dump(
         frontmatter, sort_keys=False, default_flow_style=False, width=10**9
@@ -102,7 +127,11 @@ def main():
     )
 
     for path in paths:
-        filename, content = render(path, args.format)
+        rendered = render(path, args.format)
+        if rendered is None:
+            print(f"  SKIP   {path.name}: tier has no {args.format} representation")
+            continue
+        filename, content = rendered
         if args.list:
             print(filename)
         elif args.out:

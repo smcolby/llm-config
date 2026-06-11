@@ -350,6 +350,19 @@ def inspect_rules(errors: list, warnings: list):
         console.print(f"\n  {_s_err('router index stale — run sync.py --rules --apply')}")
         errors.append("rules router index stale or missing (sync.py --rules --apply)")
 
+    # claude code path-scoped renders (deployed globally via the ~/.claude/rules symlink)
+    expected_files = sync.build_claude_rules(rules)
+    existing = (
+        {p.name: p.read_text() for p in sync.CLAUDE_RULES_DIR.glob("*.md")}
+        if sync.CLAUDE_RULES_DIR.exists()
+        else {}
+    )
+    if existing == expected_files:
+        console.print(f"  {_s_ok('claude rules fresh', short(sync.CLAUDE_RULES_DIR))}")
+    else:
+        console.print(f"  {_s_err('claude rules stale — run sync.py --rules --apply')}")
+        errors.append("claude rules render stale or missing (sync.py --rules --apply)")
+
 
 # ── skills ────────────────────────────────────────────────────────────────────
 
