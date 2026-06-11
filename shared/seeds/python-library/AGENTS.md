@@ -1,6 +1,6 @@
 # Project Context — Python Library
 
-This repository is a Python library: importable package code under `src/`, tests beside it, public API documented with NumPy-style docstrings.
+This repository is a Python library: the importable package at the repo root, tests beside it, public API documented with NumPy-style docstrings.
 
 ## Environment
 
@@ -9,7 +9,7 @@ This repository is a Python library: importable package code under `src/`, tests
 
 ## Layout
 
-- `src/<package>/` for code, `tests/` for pytest suites, `pyproject.toml` at the root.
+- `<package>/` for code, `tests/` for pytest suites, `pyproject.toml` at the root.
 
 ## Standing gates
 

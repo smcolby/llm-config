@@ -1,6 +1,6 @@
 # Project Context — Python Service
 
-This repository is a long-running Python service (API or worker): application code under `src/`, configuration from the environment, tests in `tests/`.
+This repository is a long-running Python service (API or worker): application code in the package directory at the repo root, configuration from the environment, tests in `tests/`.
 
 ## Environment
 

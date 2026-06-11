@@ -294,7 +294,7 @@ Universal blocks: code style, writing conventions, git conventions, execution gu
 | `lang/python/core` | `scoped` on `**/*.py` | Full type annotations with modern syntax; guard clauses and early returns, happy path last; descriptive names with auxiliary verbs; module and package naming; logging over print; dataclasses/Pydantic over bare dicts at boundaries; anti-hallucination list (e.g. deprecated `typing` aliases, `os.path` where `pathlib` is standard) |
 | `lang/python/testing` | `scoped` on test globs | Pytest only; fixtures over setup methods; `parametrize` over loops; `tmp_path` over manual temp handling; one behavior per test, named for the behavior; no inter-test dependence; coverage policy and what not to test; property-based testing (hypothesis) for pure functions with rich input spaces |
 | `lang/python/docs` | `scoped` on `**/*.py` + docs globs | NumPy-style docstrings (the rule carries the *full* section-by-section spec so doctrine carries at most a one-line gesture); examples must be executable; README and API docs updated in the same change as the code they describe |
-| `lang/python/packaging` | `scoped` on `pyproject.toml`, lockfiles | uv for environments and installs; `pyproject.toml` as single source of project metadata; src layout; exact-pin lockfile policy; ruff + pyright as the standing lint/type gate |
+| `lang/python/packaging` | `scoped` on `pyproject.toml`, lockfiles | uv for environments and installs; `pyproject.toml` as single source of project metadata; one declared package layout; exact-pin lockfile policy; ruff + pyright as the standing lint/type gate |
 | `lang/python/security` | `requested` | Validate at system boundaries only; secrets never in code or committed config; `subprocess` without `shell=True`; pinned-dependency audit habits |
 | `stack/*` | `scoped`, opt-in per repo | Version-pinned framework rules (FastAPI, NumPy/SciPy, etc.), ingested from community catalogs via the ingest operation as needed |
 
@@ -458,7 +458,7 @@ You are an expert in Python test architecture with pytest.
   between act and assert.
 - Group tests in classes only when they share fixtures, never for
   namespacing alone.
-- Test files parallel the source layout: src/pkg/auth.py is tested by
+- Test files parallel the source layout: pkg/auth.py is tested by
   tests/test_auth.py.
 
 ## Fixtures and parametrization

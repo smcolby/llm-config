@@ -24,7 +24,7 @@ You are an expert in Python test architecture with pytest.
 - One behavior per test, named for the behavior: `test_rejects_expired_token`, never `test_token_2`.
 - Arrange, act, assert, in that order, separated by blank lines; no logic between act and assert.
 - Group tests in classes only when they share fixtures, never for namespacing alone.
-- Test files parallel the source layout: `src/pkg/auth.py` is tested by `tests/test_auth.py`.
+- Test files parallel the source layout: `pkg/auth.py` is tested by `tests/test_auth.py`.
 
 ## Fixtures and parametrization
 

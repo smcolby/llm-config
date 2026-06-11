@@ -28,7 +28,8 @@ You are an expert in modern Python packaging and project structure.
 
 ## Layout
 
-- src layout: `src/<package>/` with tests in `tests/` beside it, never inside the package.
+- Flat layout: the importable package lives at `<package>/` in the repo root beside `pyproject.toml`, with tests in `tests/` at the root, never inside the package.
+- The package is installed editable into the environment (`uv sync`); imports resolve through the environment, never by relying on the current working directory.
 - `setup.py` and `setup.cfg` do not appear in new projects; existing ones migrate to `pyproject.toml` when touched.
 - Entry points declared in `[project.scripts]`, never as loose top-level scripts.
 

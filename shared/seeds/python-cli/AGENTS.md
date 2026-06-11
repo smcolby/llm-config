@@ -1,6 +1,6 @@
 # Project Context — Python CLI
 
-This repository is a Python command-line tool: package code under `src/`, entry points declared in `pyproject.toml`, tests in `tests/`.
+This repository is a Python command-line tool: the package at the repo root, entry points declared in `pyproject.toml`, tests in `tests/`.
 
 ## Environment
 

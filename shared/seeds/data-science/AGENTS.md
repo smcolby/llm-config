@@ -1,6 +1,6 @@
 # Project Context — Data Science
 
-This repository is a data science project: EDA, notebooks, experiments, and light pipelines. Exploratory work lives in `notebooks/`; code that stabilizes graduates into `src/`.
+This repository is a data science project: EDA, notebooks, experiments, and light pipelines. Exploratory work lives in `notebooks/`; code that stabilizes graduates into the package directory.
 
 ## Environment
 
@@ -11,7 +11,7 @@ This repository is a data science project: EDA, notebooks, experiments, and ligh
 
 - Every committed notebook runs clean top to bottom (`Restart & Run All`); hidden state and out-of-order execution are defects.
 - Outputs are stripped before commit (nbstripout or equivalent hook); plots and artifacts are regenerable, never the stored source of truth.
-- A notebook that is rerun more than a few times is a pipeline: promote its logic into `src/` functions with tests, and let the notebook call them.
+- A notebook that is rerun more than a few times is a pipeline: promote its logic into package functions with tests, and let the notebook call them.
 
 ## Data and experiments
 
@@ -21,8 +21,8 @@ This repository is a data science project: EDA, notebooks, experiments, and ligh
 
 ## Standing gates
 
-- ruff (lint + format) and pyright run via pre-commit on `src/`; notebooks are exempt from docstring gates but not from correctness.
-- `uv run pytest` covers `src/`; promoted pipeline code is tested like library code.
+- ruff (lint + format) and pyright run via pre-commit on the package directory; notebooks are exempt from docstring gates but not from correctness.
+- `uv run pytest` covers the package; promoted pipeline code is tested like library code.
 
 ## Operating model
 
