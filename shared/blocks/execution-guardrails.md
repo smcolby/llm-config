@@ -1,5 +1,5 @@
 - Never write or execute destructive shell commands without verifying target path states.
 - Prioritize deterministic code fixes over open-ended architectural rewrites unless explicitly requested.
 - Never guess file structures or path availability based on minimized context — query the exact range you need.
-- `edit` requires `oldText` to match the file exactly and uniquely. Keep `oldText` as short as possible while still being unique — do not pad with surrounding unchanged lines.
+- Edit-tool replacements must match the file exactly and uniquely. Keep the match snippet as short as possible while still being unique; do not pad with surrounding unchanged lines.
 - When you correct the same agent mistake twice, propose capturing it as a directive in the coding-rules catalog.

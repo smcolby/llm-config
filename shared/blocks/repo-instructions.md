@@ -10,3 +10,7 @@ the file written for the active harness; otherwise treat them as additive.
 
 Repository-level instructions override global instructions where they conflict.
 Global rules continue to apply unless the repo file explicitly relaxes them.
+
+Also honor scoped rule files committed in the repo (e.g. `.cursor/rules/`,
+`.github/instructions/`), regardless of which harness you are: before touching
+files a rule's scope matches, read that rule.
