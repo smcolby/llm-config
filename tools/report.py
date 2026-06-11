@@ -86,31 +86,26 @@ def check_symlink(src: Path, dst: Path) -> tuple[bool, str]:
     return True, link
 
 
-def s_ok(label: str, detail: str = "") -> str:
-    """Format a green success line."""
+def _s_ok(label: str, detail: str = "") -> str:
     suffix = f"  [dim]{detail}[/dim]" if detail else ""
     return f"[green]✓[/green]  {label}{suffix}"
 
 
-def s_warn(label: str, detail: str = "") -> str:
-    """Format a yellow warning line."""
+def _s_warn(label: str, detail: str = "") -> str:
     suffix = f"  [dim]{detail}[/dim]" if detail else ""
     return f"[yellow]![/yellow]  {label}{suffix}"
 
 
-def s_err(label: str) -> str:
-    """Format a red failure line."""
+def _s_err(label: str) -> str:
     return f"[red]✗[/red]  {label}"
 
 
-def section(title: str):
-    """Print a section rule header."""
+def _section(title: str):
     console.print()
     console.rule(f"[bold]{title}[/bold]", style="bright_blue")
 
 
-def harness_row(harness: str, content: str):
-    """Print an indented per-harness status row."""
+def _harness_row(harness: str, content: str):
     console.print(f"    [dim]{harness:<14}[/dim]  {content}")
 
 
@@ -218,7 +213,7 @@ def _tool_cell(ext: dict, harness: str) -> tuple[str, list[str]]:
 
 def inspect_tools(errors: list, warnings: list):
     """Single TOOLS table: tools as rows, harnesses as columns, mechanism per cell."""
-    section("TOOLS  (per-harness integration mechanism)")
+    _section("TOOLS  (per-harness integration mechanism)")
 
     extensions = load_extensions()
     if not extensions:
@@ -248,7 +243,7 @@ def inspect_tools(errors: list, warnings: list):
 
 def inspect_blocks(errors: list, warnings: list):
     """Block fence presence per harness. Instruction file wiring is checked in HARNESS WIRING."""
-    section("SHARED BLOCKS  (fence presence per harness)")
+    _section("SHARED BLOCKS  (fence presence per harness)")
 
     harnesses = list(HARNESS_FILES.keys())
     fence_text = {
@@ -287,7 +282,7 @@ def inspect_blocks(errors: list, warnings: list):
 
 def inspect_agents(errors: list, warnings: list):
     """Report rendered agent file presence per harness."""
-    section("SHARED AGENTS  (rendered file presence per harness)")
+    _section("SHARED AGENTS  (rendered file presence per harness)")
 
     agent_configs = registry.agent_configs()
 
@@ -321,7 +316,7 @@ def inspect_agents(errors: list, warnings: list):
 
 def inspect_rules(errors: list, warnings: list):
     """Canonical rule catalog: schema, tiers, scopes, review dates, router freshness."""
-    section("RULES  (catalog + router skill index)")
+    _section("RULES  (catalog + router skill index)")
 
     import sync
 
@@ -332,7 +327,7 @@ def inspect_rules(errors: list, warnings: list):
     try:
         rules = sync.load_rules()
     except SystemExit:
-        console.print(f"\n  {s_err('rule schema errors — see sync.py --rules output')}")
+        console.print(f"\n  {_s_err('rule schema errors — see sync.py --rules output')}")
         errors.append("rule schema validation failed (python tools/sync.py --rules)")
         return
 
@@ -350,9 +345,9 @@ def inspect_rules(errors: list, warnings: list):
 
     expected = sync.build_router(rules)
     if sync.ROUTER_SKILL.exists() and sync.ROUTER_SKILL.read_text() == expected:
-        console.print(f"\n  {s_ok('router index fresh', short(sync.ROUTER_SKILL))}")
+        console.print(f"\n  {_s_ok('router index fresh', short(sync.ROUTER_SKILL))}")
     else:
-        console.print(f"\n  {s_err('router index stale — run sync.py --rules --apply')}")
+        console.print(f"\n  {_s_err('router index stale — run sync.py --rules --apply')}")
         errors.append("rules router index stale or missing (sync.py --rules --apply)")
 
 
@@ -361,7 +356,7 @@ def inspect_rules(errors: list, warnings: list):
 
 def inspect_skills(errors: list, warnings: list):
     """Report each shared skill's wiring per harness."""
-    section("SKILLS")
+    _section("SKILLS")
     skills: dict[str, dict[str, Path]] = {}
 
     skill_dirs = {h: w["skill_dir"] for h, w in HARNESS_WIRING.items() if w["skill_dir"]}
@@ -381,7 +376,7 @@ def inspect_skills(errors: list, warnings: list):
 
         for harness in skill_dirs:
             if harness not in by_harness:
-                harness_row(harness, "[dim]not wired[/dim]")
+                _harness_row(harness, "[dim]not wired[/dim]")
                 warnings.append(f"skill '{skill_name}': not wired in {harness}")
                 continue
 
@@ -391,17 +386,17 @@ def inspect_skills(errors: list, warnings: list):
                 link = str(p.readlink())
                 link_short = link.replace(str(HOME), "~")
                 if p.exists():
-                    harness_row(harness, s_ok(short(p), f"→ {link_short}"))
+                    _harness_row(harness, _s_ok(short(p), f"→ {link_short}"))
                 else:
-                    harness_row(harness, s_err(f"dangling: {short(p)} → {link_short}"))
+                    _harness_row(harness, _s_err(f"dangling: {short(p)} → {link_short}"))
                     errors.append(f"skill '{skill_name}': {harness} symlink dangling")
             elif p.is_dir():
-                harness_row(harness, s_warn(short(p), "directory, not a symlink"))
+                _harness_row(harness, _s_warn(short(p), "directory, not a symlink"))
                 warnings.append(
                     f"skill '{skill_name}': {harness} path is a directory, not a symlink"
                 )
             else:
-                harness_row(harness, s_err(f"{short(p)} not found"))
+                _harness_row(harness, _s_err(f"{short(p)} not found"))
                 errors.append(f"skill '{skill_name}': {harness} not wired")
 
 
@@ -410,7 +405,7 @@ def inspect_skills(errors: list, warnings: list):
 
 def inspect_models(errors: list, warnings: list):
     """Report each shared model config and which harnesses consume it."""
-    section("SHARED MODELS")
+    _section("SHARED MODELS")
 
     if not MODELS_DIR.exists():
         console.print("\n  [dim]no shared models defined[/dim]")
@@ -450,15 +445,17 @@ def inspect_models(errors: list, warnings: list):
         all_harnesses = list(HARNESS_FILES.keys())
         for harness in all_harnesses:
             if harness in not_applicable:
-                harness_row(harness, f"[dim]—  not applicable ({not_applicable[harness]})[/dim]")
+                _harness_row(harness, f"[dim]—  not applicable ({not_applicable[harness]})[/dim]")
             elif harness in notes:
-                harness_row(harness, f"[dim]ℹ  {notes[harness]}[/dim]")
+                _harness_row(harness, f"[dim]ℹ  {notes[harness]}[/dim]")
             elif harness in wired or harness in expected_harnesses:
                 link = wired.get(harness)
                 if link:
-                    harness_row(harness, s_ok(short(link), f"→ {short(model_file)}"))
+                    _harness_row(harness, _s_ok(short(link), f"→ {short(model_file)}"))
                 else:
-                    harness_row(harness, s_err(f"expected symlink missing in harnesses/{harness}/"))
+                    _harness_row(
+                        harness, _s_err(f"expected symlink missing in harnesses/{harness}/")
+                    )
                     errors.append(f"shared model '{model_file.name}': {harness} symlink missing")
             # harnesses that are neither expected nor excluded are silently skipped
 
@@ -471,7 +468,7 @@ def inspect_models(errors: list, warnings: list):
 
 def inspect_harness_wiring(errors: list, warnings: list):
     """Report bootstrap-managed symlinks and generated files."""
-    section("HARNESS WIRING  (symlinks + generated files)")
+    _section("HARNESS WIRING  (symlinks + generated files)")
 
     all_harnesses = sorted(set(list(SYMLINK_MAP) + list(GENERATED_MAP)))
     for harness in all_harnesses:
@@ -479,20 +476,20 @@ def inspect_harness_wiring(errors: list, warnings: list):
         for src, dst in SYMLINK_MAP.get(harness, []):
             ok_flag, msg = check_symlink(src, dst)
             if ok_flag:
-                console.print(f"    {s_ok(short(dst), f'→ {short(src)}')}")
+                console.print(f"    {_s_ok(short(dst), f'→ {short(src)}')}")
             else:
-                console.print(f"    {s_err(f'{short(dst)}: {msg}')}")
+                console.print(f"    {_s_err(f'{short(dst)}: {msg}')}")
                 errors.append(f"symlink {short(dst)}: {msg}")
         for _src, dst in GENERATED_MAP.get(harness, []):
             if dst.exists() and not dst.is_symlink():
-                console.print(f"    {s_ok(short(dst), '(generated)')}")
+                console.print(f"    {_s_ok(short(dst), '(generated)')}")
             elif dst.is_symlink():
-                console.print(f"    {s_warn(short(dst), 'still a symlink — re-run bootstrap.py')}")
+                console.print(f"    {_s_warn(short(dst), 'still a symlink — re-run bootstrap.py')}")
                 warnings.append(
                     f"generated file {short(dst)}: still a symlink, re-run bootstrap.py"
                 )
             else:
-                console.print(f"    {s_err(f'{short(dst)}: not found — run bootstrap.py')}")
+                console.print(f"    {_s_err(f'{short(dst)}: not found — run bootstrap.py')}")
                 errors.append(f"generated file {short(dst)}: not found")
 
     # external-source symlinks (sources live outside this repo)
@@ -500,9 +497,9 @@ def inspect_harness_wiring(errors: list, warnings: list):
     if LLM_WIKI_SRC.exists():
         ok_flag, msg = check_symlink(LLM_WIKI_SRC, LLM_WIKI_LINK)
         if ok_flag:
-            console.print(f"    {s_ok(short(LLM_WIKI_LINK), f'→ {short(LLM_WIKI_SRC)}')}")
+            console.print(f"    {_s_ok(short(LLM_WIKI_LINK), f'→ {short(LLM_WIKI_SRC)}')}")
         else:
-            console.print(f"    {s_err(f'{short(LLM_WIKI_LINK)}: {msg}')}")
+            console.print(f"    {_s_err(f'{short(LLM_WIKI_LINK)}: {msg}')}")
             errors.append(f"symlink {short(LLM_WIKI_LINK)}: {msg}")
     else:
         console.print(
@@ -544,7 +541,7 @@ def _colored_diff(expected: str, actual: str, src: Path, dst: Path) -> list[str]
 
 def inspect_generated_drift(warnings: list):
     """Report drift between live generated files and their rendered templates."""
-    section("GENERATED FILE DRIFT  (live vs rendered template)")
+    _section("GENERATED FILE DRIFT  (live vs rendered template)")
 
     any_drift = False
     for harness in sorted(GENERATED_MAP):
@@ -587,7 +584,7 @@ def inspect_generated_drift(warnings: list):
 
 def inspect_manifest_drift(errors: list, warnings: list):
     """Report drift between extension manifests and the files they render to."""
-    section("MANIFEST-DERIVED FILES  (manifest → repo)")
+    _section("MANIFEST-DERIVED FILES  (manifest → repo)")
 
     entries = wire_extensions.collect_hooks_drift() + wire_extensions.collect_mcp_drift()
     if not entries:
@@ -603,16 +600,16 @@ def inspect_manifest_drift(errors: list, warnings: list):
         console.print(f"\n  [bold cyan]{short(source)}[/bold cyan]")
         for e in by_source[source]:
             if e.status == "ok":
-                console.print(f"    {s_ok(short(e.path))}")
+                console.print(f"    {_s_ok(short(e.path))}")
             elif e.status == "drift":
                 any_issue = True
-                console.print(f"    {s_warn(short(e.path), 'drift — manifest and file differ')}")
+                console.print(f"    {_s_warn(short(e.path), 'drift — manifest and file differ')}")
                 warnings.append(
                     f"manifest drift: {short(e.path)} out of sync with {short(e.source)}"
                 )
             else:  # missing
                 any_issue = True
-                console.print(f"    {s_err(f'{short(e.path)}: missing')}")
+                console.print(f"    {_s_err(f'{short(e.path)}: missing')}")
                 errors.append(f"manifest-derived file missing: {short(e.path)}")
 
     if any_issue:
@@ -643,7 +640,7 @@ def main():
     inspect_harness_wiring(errors, warnings)
     inspect_generated_drift(warnings)
 
-    section("SUMMARY")
+    _section("SUMMARY")
     console.print()
 
     if not errors and not warnings:

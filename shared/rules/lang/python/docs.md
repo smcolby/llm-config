@@ -21,6 +21,7 @@ You are an expert in Python API documentation using the NumPy docstring standard
 ## Docstrings (NumPy style)
 
 - Every public module, class, function, and method carries a docstring; private helpers only when behavior is non-obvious.
+- "Public" means the module's external API, not merely the absence of a leading underscore. Module-internal helpers are underscore-prefixed, which both marks them private and exempts them from the docstring requirement. If the only honest docstring for a function would restate its name, that is a signal the function is internal (prefix it `_`), not a reason to write a filler docstring.
 - One-line summary in imperative mood on the first line, ending with a period; blank line before any further content.
 - Sections in canonical order, each underlined with hyphens:
   `Parameters`, `Returns`, `Yields`, `Raises`, `See Also`, `Notes`, `References`, `Examples`.
