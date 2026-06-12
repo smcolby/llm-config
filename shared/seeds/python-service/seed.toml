@@ -13,6 +13,7 @@ rules = [
     "lang/python/docs.md",
     "lang/python/packaging.md",
     "lang/python/security.md",
+    "prose/writing-conventions.md",
 ]
 
 # stack rules are offered by repo-seed when the matching dependency is

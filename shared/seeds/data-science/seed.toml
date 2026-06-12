@@ -13,4 +13,5 @@ rules = [
     "lang/python/docs.md",
     "lang/python/packaging.md",
     "lang/python/security.md",
+    "prose/writing-conventions.md",
 ]

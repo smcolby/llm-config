@@ -141,7 +141,7 @@ Session history is persistent and survives /clear and /compact: on resume, `ctx_
 
 ## Coding Rules
 <!-- block: rules -->
-A scoped coding-rules catalog is installed as the `rules` skill. Before creating or modifying source files, consult its index, which maps file patterns to rules (Python core, testing, docs, packaging, security), and read the matching rules. Directives marked as tool-enforced are gates: fix the code rather than fighting the linter.
+A scoped coding-rules catalog is installed as the `rules` skill. Before creating or modifying source files, consult its index, which maps file patterns and task descriptions to rules, and read the matching rules. Directives marked as tool-enforced are gates: fix the code rather than fighting the linter.
 <!-- /block: rules -->
 
 ## LLM Wiki
