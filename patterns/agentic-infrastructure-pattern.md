@@ -169,7 +169,7 @@ No motivational filler, no restating what the model already does correctly. A ru
 
 ### Rule taxonomy
 
-Rules organize along two axes, mirroring the community catalogs:
+Rules organize along axes, mirroring the community catalogs:
 
 ```
 rules/
@@ -184,13 +184,15 @@ rules/
 │   ├── fastapi.md
 │   ├── numpy-scipy.md
 │   └── ...
+├── prose/          # Prose-scoped: conventions for authored text, keyed to document files
+│   └── writing-conventions.md
 └── task/           # Task-scoped: activated by what you're doing, not what you're touching
     ├── adversarial-review.md
     ├── test-authoring.md
     └── doc-authoring.md
 ```
 
-`lang/` rules are broadly applicable and travel with the language. `stack/` rules are opt-in (a repo declares its stack; only matching rules activate) and carry the strictest version pins. `task/` rules are usually thin: when a task rule grows a procedure, it graduates into a playbook (skill) and the rule shrinks back to constraints.
+`lang/` rules are broadly applicable and travel with the language. `stack/` rules are opt-in (a repo declares its stack; only matching rules activate) and carry the strictest version pins. `prose/` rules treat authored text the way `lang/` rules treat a language: scoped to document files (Markdown, reStructuredText), carrying the full convention spec so doctrine retains only the universal core that also governs replies and commit messages. `task/` rules are usually thin: when a task rule grows a procedure, it graduates into a playbook (skill) and the rule shrinks back to constraints.
 
 ### Precedence
 

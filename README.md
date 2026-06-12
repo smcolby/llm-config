@@ -42,7 +42,7 @@ The ordering is a budget: each layer exists to keep content out of the always-on
 ```
 shared/        canonical content
   blocks/      doctrine, fenced into each harness instruction file
-  rules/       coding rules (lang/, stack/, task/), indexed into the `rules` router skill
+  rules/       coding rules (lang/, stack/, prose/, task/), indexed into the `rules` router skill
                and rendered to Claude Code path-scoped rules (live via ~/.claude/rules)
   agents/      persona bodies; frontmatter rendered per harness
   skills/      playbooks + the generated rules router; symlinked into every harness
