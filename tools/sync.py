@@ -30,6 +30,11 @@ HARNESSES_DIR = REPO / "harnesses"
 
 RULE_TIERS = {"always", "scoped", "requested", "invoked"}
 RULE_BODY_MAX_LINES = 500
+FRONTMATTER_TOKEN_BUDGET = 100
+REVIEWED_STALE_MONTHS_DEFAULT = 12
+
+# machine-specific roots; portable forms (~/, $HOME, relative) are fine
+ABS_PATH_RE = re.compile(r"(?<![\w@.-])(?:/Users/|/home/|[A-Za-z]:\\)")
 
 HARNESS_INSTRUCTION_FILES = {
     h: REPO / conf["instruction_file"] for h, conf in registry.harnesses().items()
@@ -102,6 +107,61 @@ def load_frontmatter(raw: str) -> tuple[dict | None, str | None]:
         return None, f"invalid YAML frontmatter: {detail}{hint}"
 
 
+def lint_description(rel, desc: str) -> list[str]:
+    """Return description-quality warnings: third person, enough matchable keywords."""
+    warnings: list[str] = []
+    words = desc.split()
+    if words and words[0].lower().rstrip(",.") in {"i", "we", "my", "our", "you", "your"}:
+        warnings.append(f"{rel}: description should be third person, stating what and when")
+    if len(words) < 8:
+        warnings.append(f"{rel}: description too thin to match against tasks (under 8 words)")
+    return warnings
+
+
+def reviewed_months_ago(value) -> int | None:
+    """Return whole months since a reviewed: stamp, or None if unparseable."""
+    import datetime
+
+    if isinstance(value, datetime.date):
+        year, month = value.year, value.month
+    else:
+        m = re.match(r"^(\d{4})-(\d{2})", str(value))
+        if not m:
+            return None
+        year, month = int(m.group(1)), int(m.group(2))
+    today = datetime.date.today()
+    return (today.year - year) * 12 + (today.month - month)
+
+
+def lint_common(rel, fm: dict, text: str) -> tuple[list[str], list[str]]:
+    """Run the authoring-standards lints shared by rules and skills.
+
+    Returns (errors, warnings): hygiene violations are errors, quality
+    heuristics and staleness are warnings.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    if ABS_PATH_RE.search(text):
+        errors.append(f"{rel}: machine-specific absolute path; use ~/-style or relative paths")
+    if fm.get("description"):
+        warnings.extend(lint_description(rel, fm["description"]))
+        # scope globs are functional precision and exempt; the budget targets prose
+        desc_tokens = len(fm["description"]) // 4
+        if desc_tokens > FRONTMATTER_TOKEN_BUDGET:
+            warnings.append(
+                f"{rel}: description ~{desc_tokens} tokens"
+                f" (budget {FRONTMATTER_TOKEN_BUDGET}); trim to what matching needs"
+            )
+    if fm.get("reviewed"):
+        stale_after = registry.load().get("reviewed_stale_months", REVIEWED_STALE_MONTHS_DEFAULT)
+        age = reviewed_months_ago(fm["reviewed"])
+        if age is not None and age > stale_after:
+            warnings.append(
+                f"{rel}: reviewed {age} months ago (stale after {stale_after}); run catalog-audit"
+            )
+    return errors, warnings
+
+
 def parse_shared_agent(path: Path):
     """Parse a shared agent file into (frontmatter, body); exit on malformed input."""
     text = path.read_text()
@@ -169,6 +229,7 @@ def load_rules() -> list[tuple[Path, dict, str]]:
     """Parse and schema-validate all canonical rules. Exits non-zero on errors."""
     rules: list[tuple[Path, dict, str]] = []
     errors: list[str] = []
+    warnings: list[str] = []
     seen: dict[str, Path] = {}
     for path in sorted(RULES_DIR.rglob("*.md")):
         rel = path.relative_to(REPO)
@@ -190,6 +251,14 @@ def load_rules() -> list[tuple[Path, dict, str]]:
             errors.append(f"{rel}: invalid tier '{tier}' (expected {sorted(RULE_TIERS)})")
         if tier == "scoped" and not fm.get("scope"):
             errors.append(f"{rel}: tier 'scoped' requires a scope glob list")
+        for glob in fm.get("scope") or []:
+            if not isinstance(glob, str) or not glob.strip():
+                errors.append(f"{rel}: scope entries must be non-empty glob strings")
+            elif glob.startswith("/") or "\\" in glob:
+                errors.append(f"{rel}: scope glob '{glob}' must be relative with forward slashes")
+        lint_errors, lint_warnings = lint_common(rel, fm, text)
+        errors.extend(lint_errors)
+        warnings.extend(lint_warnings)
         name = fm.get("name")
         if name:
             if name in seen:
@@ -199,6 +268,8 @@ def load_rules() -> list[tuple[Path, dict, str]]:
         if len(body.splitlines()) > RULE_BODY_MAX_LINES:
             errors.append(f"{rel}: body exceeds {RULE_BODY_MAX_LINES} lines")
         rules.append((path, fm, body))
+    for w in warnings:
+        print(f"  WARN  {w}")
     if errors:
         for e in errors:
             print(f"  ERROR: {e}", file=sys.stderr)
@@ -323,9 +394,11 @@ def check_rules(apply: bool) -> int:
 def check_skills() -> int:
     """Schema-validate shared skill frontmatter. Exits non-zero on errors."""
     errors: list[str] = []
+    warnings: list[str] = []
     for skill_md in sorted(SKILLS_DIR.glob("*/SKILL.md")):
         rel = skill_md.relative_to(REPO)
-        m = FM_RE.match(skill_md.read_text())
+        text = skill_md.read_text()
+        m = FM_RE.match(text)
         if not m:
             errors.append(f"{rel}: missing frontmatter")
             continue
@@ -341,6 +414,14 @@ def check_skills() -> int:
         # the generated router's freshness is checked mechanically by check_rules
         if skill_md != ROUTER_SKILL and not fm.get("reviewed"):
             errors.append(f"{rel}: missing 'reviewed' (required for playbooks)")
+        body = text[m.end() :]
+        if len(body.splitlines()) > RULE_BODY_MAX_LINES:
+            errors.append(f"{rel}: body exceeds {RULE_BODY_MAX_LINES} lines")
+        lint_errors, lint_warnings = lint_common(rel, fm, text)
+        errors.extend(lint_errors)
+        warnings.extend(lint_warnings)
+    for w in warnings:
+        print(f"  WARN  {w}")
     if errors:
         for e in errors:
             print(f"  ERROR: {e}", file=sys.stderr)

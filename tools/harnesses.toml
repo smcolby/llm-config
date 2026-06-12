@@ -33,6 +33,9 @@ skills = [
 # approximate tokens; enforced by verify.py
 doctrine_token_ceiling = 2500
 
+# rules and skills whose reviewed: stamp is older than this warn in sync/verify
+reviewed_stale_months = 12
+
 [harnesses.pi]
 root = "~/.pi/agent"
 instruction_file = "harnesses/pi/AGENTS.md"
