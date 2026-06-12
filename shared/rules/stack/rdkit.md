@@ -24,7 +24,7 @@ You are an expert in cheminformatics with RDKit; domain interpretation (potency,
 
 - Check `Chem.MolFromSmiles`/`MolFromMolBlock` results for `None` before any use; in batch pipelines, count and log parse failures rather than silently dropping rows.
 - Standardize input structures with `rdMolStandardize` (cleanup, largest fragment, uncharge as the project requires) before computing descriptors or fingerprints, and record which steps ran.
-- Build fingerprints through `rdFingerprintGenerator` (e.g. `GetMorganGenerator(radius=2, fpSize=2048)`) with radius and size stated explicitly; the module-level Morgan/AP functions are deprecated.
+- Build fingerprints through `rdFingerprintGenerator` (e.g. `GetMorganGenerator(radius=2, fpSize=2048)`) with radius and size stated explicitly; the module-level Morgan/AP functions are legacy.
 - Edit molecules on a `Chem.RWMol`, then sanitize and convert back; never mutate a parsed `Mol` mid-iteration.
 - Suppress RDKit's per-molecule logging in batch work with `RDLogger.DisableLog("rdApp.*")` only after parse-failure accounting is in place.
 - Compute descriptors from `rdkit.Chem.Descriptors`/`rdMolDescriptors` by name, keeping the descriptor list versioned with the model that consumes it.
