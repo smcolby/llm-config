@@ -10,7 +10,8 @@ repos:
     rev: v1.1.410
     hooks:
       - id: pyright
-        additional_dependencies: [rich, pyyaml]
+        # pytest and hypothesis resolve the rule exemplars' imports
+        additional_dependencies: [rich, pyyaml, pytest, hypothesis]
 
   - repo: local
     hooks:

@@ -61,6 +61,10 @@ You are an expert in Python test architecture with pytest.
 | asserting `mock.return_value` round-trips | exercise real behavior via a fake or cheap real component |
 | expected values derived by re-running the implementation's logic | hand-computed constants or known-good fixtures |
 
+## Reference exemplar
+
+A canonical test module embodying these directives lives in the rules catalog at `rules/lang/python/examples/test_exemplar.py`, reachable through the `rules` skill directory. When authoring a suite from scratch, read it and imitate its shape, never its domain.
+
 ## Enforcement
 
 Fixture style, assertion style, and parametrize formatting are enforced by ruff's `PT` rule family where the repo is seeded with it. Do not fight the linter; fix the test.

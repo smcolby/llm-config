@@ -40,6 +40,10 @@ You are an expert in Python API documentation using the NumPy docstring standard
 - README documents what the project is, how to install, and the shortest path to first success; API detail belongs in docstrings or generated docs.
 - Changelog entries land with the change, written for users (what changed, why it matters), never as commit-log narration.
 
+## Reference exemplar
+
+A canonical module embodying these docstring shapes lives in the rules catalog at `rules/lang/python/examples/docstrings_exemplar.py`, reachable through the `rules` skill directory. When writing docstrings for a new module, read it and imitate its shapes, never its domain.
+
 ## Enforcement
 
 Docstring presence and NumPy-format compliance are enforced by ruff's `D` rule family with `convention = "numpy"` where the repo is seeded with it. Do not fight the linter; fix the docstring.

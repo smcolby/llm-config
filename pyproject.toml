@@ -13,6 +13,10 @@ ignore = ["S603", "S607", "D105", "D107"]
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
+[tool.ruff.lint.per-file-ignores]
+# the rule exemplar test module gets the same relaxations seeded repos give tests/
+"shared/rules/**/examples/test_*.py" = ["S101", "D"]
+
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
