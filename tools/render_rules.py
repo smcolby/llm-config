@@ -55,13 +55,26 @@ def provenance(rule_path: Path) -> str:
     return f"{rel} @ {head}"
 
 
-def render(rule_path: Path, fmt: str, include_provenance: bool = True) -> tuple[str, str] | None:
+def render(
+    rule_path: Path,
+    fmt: str,
+    include_provenance: bool = True,
+    include_requested: bool = False,
+) -> tuple[str, str] | None:
     """Render one canonical rule to (filename, content).
 
     Returns None when the rule's tier has no representation in the target
     format. Provenance is included for repo-deployed copies (reseed diffs against the
     stamped commit) and omitted for catalog-committed renders, where the stamp
     would churn on every commit and git already tracks drift.
+
+    include_requested opens the claude target for `requested`-tier rules at
+    repo-local deployment time. Globally those rules must route through the
+    rules skill because Claude Code unscoped rules are always-on, but a
+    repo-local copy whose scope field is honored as `paths` activates the
+    same way Cursor or Copilot would scope it. Rules without scope render
+    unscoped (always-on for that repo) since their activation is genuinely
+    universal within the deploying repo's bounds.
     """
     import yaml
 
@@ -95,10 +108,12 @@ def render(rule_path: Path, fmt: str, include_provenance: bool = True) -> tuple[
     else:
         # claude rules have no description activation: an unscoped rule is
         # always-on, so requested/invoked tiers stay with the rules skill
-        if fm.get("tier") not in ("scoped", "always"):
+        # unless include_requested opts the call in to repo-local deployment
+        tier = fm.get("tier")
+        if tier not in ("scoped", "always") and not (include_requested and tier == "requested"):
             return None
         frontmatter = {"description": description}
-        if fm.get("tier") == "scoped":
+        if tier == "scoped" or (include_requested and tier == "requested" and fm.get("scope")):
             frontmatter["paths"] = fm["scope"]
         filename = f"{name}.md"
 
@@ -118,6 +133,11 @@ def main():
     parser.add_argument("--format", required=True, choices=FORMATS)
     parser.add_argument("--out", help="output directory (omit to print to stdout)")
     parser.add_argument("--list", action="store_true", help="print target filenames only")
+    parser.add_argument(
+        "--include-requested",
+        action="store_true",
+        help="render requested-tier rules (repo-local deployment); scope becomes paths",
+    )
     args = parser.parse_args()
 
     paths = (
@@ -127,7 +147,7 @@ def main():
     )
 
     for path in paths:
-        rendered = render(path, args.format)
+        rendered = render(path, args.format, include_requested=args.include_requested)
         if rendered is None:
             print(f"  SKIP   {path.name}: tier has no {args.format} representation")
             continue
