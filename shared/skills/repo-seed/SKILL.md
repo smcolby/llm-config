@@ -31,7 +31,7 @@ Inspect before asking anything:
 
 At most four questions, detected values offered as defaults:
 
-1. Purpose archetype: `python-library`, `python-cli`, `python-service`, or `data-science` (pick the closest; mixed repos take the dominant one).
+1. Purpose archetype: `python-library`, `python-cli`, `python-service`, `data-science`, or `blog-analysis` (a lightweight analysis repo whose deliverable is a featured `blogpost.md`; pick the closest, and mixed repos take the dominant one).
 2. Strictness posture: adopt the seed's full gate config, or start lenient (gates warn, tighten later).
 3. Environment manager, only when detection is ambiguous or the repo is empty: uv (default), pixi, or conda. When conda is detected, confirm rather than assume: the team may be mid-migration.
 4. Target harness formats, only when no rule-directory footprint is detectable: Cursor project rules, Copilot instructions, Claude Code project rules, or none (AGENTS.md only). Context for the Claude option: the catalog already deploys scoped rules globally through the `~/.claude/rules` symlink, so repo-local `.claude/rules/` copies add value only for collaborators and CI without the catalog; default to none for solo repos. pi has no scoped-rule mechanism; there the global `rules` skill activates by description match.

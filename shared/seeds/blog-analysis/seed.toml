@@ -1,0 +1,17 @@
+# Seed manifest — consumed by the repo-seed skill
+archetype = "blog-analysis"
+
+[axes]
+purpose = "blog-analysis"
+language = "python"
+env_manager = "uv"  # default; repo-seed overrides per detection/answer
+
+# canonical rules to render into the repo (paths relative to shared/rules/)
+rules = [
+    "lang/python/core.md",
+    "lang/python/testing.md",
+    "lang/python/docs.md",
+    "lang/python/packaging.md",
+    "lang/python/security.md",
+    "prose/writing-conventions.md",
+]
