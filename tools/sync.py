@@ -133,17 +133,21 @@ def reviewed_months_ago(value) -> int | None:
     return (today.year - year) * 12 + (today.month - month)
 
 
-def lint_common(rel, fm: dict, text: str) -> tuple[list[str], list[str]]:
+def lint_common(
+    rel, fm: dict, text: str, description_lints: bool = True
+) -> tuple[list[str], list[str]]:
     """Run the authoring-standards lints shared by rules and skills.
 
     Returns (errors, warnings): hygiene violations are errors, quality
-    heuristics and staleness are warnings.
+    heuristics and staleness are warnings. description_lints is off for the
+    generated router index, whose description enumerates rule names as
+    activation keywords and grows with the catalog by design.
     """
     errors: list[str] = []
     warnings: list[str] = []
     if ABS_PATH_RE.search(text):
         errors.append(f"{rel}: machine-specific absolute path; use ~/-style or relative paths")
-    if fm.get("description"):
+    if description_lints and fm.get("description"):
         warnings.extend(lint_description(rel, fm["description"]))
         # scope globs are functional precision and exempt; the budget targets prose
         desc_tokens = len(fm["description"]) // 4
@@ -417,7 +421,9 @@ def check_skills() -> int:
         body = text[m.end() :]
         if len(body.splitlines()) > RULE_BODY_MAX_LINES:
             errors.append(f"{rel}: body exceeds {RULE_BODY_MAX_LINES} lines")
-        lint_errors, lint_warnings = lint_common(rel, fm, text)
+        lint_errors, lint_warnings = lint_common(
+            rel, fm, text, description_lints=skill_md != ROUTER_SKILL
+        )
         errors.extend(lint_errors)
         warnings.extend(lint_warnings)
     for w in warnings:
